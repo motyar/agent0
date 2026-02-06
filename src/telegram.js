@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import TelegramBot from 'node-telegram-bot-api';
 import fs from 'fs/promises';
 
 class TelegramService {
@@ -11,9 +10,30 @@ class TelegramService {
       throw new Error('TELEGRAM_BOT_TOKEN environment variable is required');
     }
     
-    // Don't use polling in bot initialization - we'll manually call getUpdates
-    this.bot = new TelegramBot(this.token, { polling: false });
     this.queuePath = 'queue/incoming.json';
+  }
+
+  async api(method, body = {}) {
+    const url = `https://api.telegram.org/bot${this.token}/${method}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    let payload;
+    try {
+      payload = await res.json();
+    } catch (err) {
+      throw new Error(`Invalid JSON response from Telegram API (HTTP ${res.status})`);
+    }
+
+    if (!res.ok || payload.ok === false) {
+      const errMsg = payload && payload.description ? payload.description : `HTTP ${res.status}`;
+      throw new Error(`Telegram API error: ${errMsg}`);
+    }
+
+    return payload.result;
   }
 
   async poll() {
@@ -22,23 +42,26 @@ class TelegramService {
       const queueData = await this.loadQueue();
       const offset = queueData.last_update_id + 1;
 
-      console.log(`📡 Polling Telegram... (offset: ${offset})`);
+      console.error(`📡 Polling Telegram... (offset: ${offset})`);
 
-      // Get updates from Telegram
-      const updates = await this.bot.getUpdates({
+      // Get updates from Telegram (use getUpdates via POST)
+      const updates = await this.api('getUpdates', {
         offset: offset,
         timeout: 30,
         allowed_updates: ['message']
       });
 
-      console.log(`📨 Received ${updates.length} updates`);
+      console.error(`📨 Received ${Array.isArray(updates) ? updates.length : 0} updates`);
 
-      if (updates.length === 0) {
-        return {
+      if (!Array.isArray(updates) || updates.length === 0) {
+        const resultNoUpdates = {
           messages: [],
           last_update_id: queueData.last_update_id,
           last_poll: new Date().toISOString()
         };
+        // Output only JSON to stdout for machine consumption
+        console.log(JSON.stringify(resultNoUpdates));
+        return resultNoUpdates;
       }
 
       // Process updates into messages
@@ -72,28 +95,37 @@ class TelegramService {
 
       await this.saveQueue(result);
 
-      console.log(`✅ Queued ${messages.length} messages`);
-      console.log(JSON.stringify(result, null, 2));
-
+      console.error(`✅ Queued ${messages.length} messages`);
+      // Output only JSON to stdout for machine consumption
+      console.log(JSON.stringify(result));
       return result;
 
     } catch (error) {
-      console.error('❌ Telegram polling error:', error.message);
+      console.error('❌ Telegram polling error:', error.message || error);
       throw error;
     }
   }
 
   async sendMessage(chatId, text, options = {}) {
     try {
-      console.log(`📤 Sending message to chat ${chatId}`);
-      const result = await this.bot.sendMessage(chatId, text, {
-        parse_mode: 'Markdown',
-        ...options
-      });
-      console.log(`✅ Message sent successfully`);
+      console.error(`📤 Sending message to chat ${chatId}`);
+
+      const body = {
+        chat_id: chatId,
+        text: String(text),
+        // default to Markdown if not provided
+        ...(options.parse_mode ? { parse_mode: options.parse_mode } : { parse_mode: 'Markdown' }),
+        ...(options.reply_to_message_id ? { reply_to_message_id: options.reply_to_message_id } : {}),
+        ...(options.disable_web_page_preview ? { disable_web_page_preview: options.disable_web_page_preview } : {}),
+        ...(options.disable_notification ? { disable_notification: options.disable_notification } : {})
+      };
+
+      const result = await this.api('sendMessage', body);
+
+      console.error(`✅ Message sent successfully (message_id=${result.message_id})`);
       return result;
     } catch (error) {
-      console.error(`❌ Failed to send message:`, error.message);
+      console.error(`❌ Failed to send message:`, error.message || error);
       throw error;
     }
   }
@@ -113,11 +145,17 @@ class TelegramService {
   }
 
   async saveQueue(data) {
+    await fs.mkdir('queue', { recursive: true }).catch(() => {});
     await fs.writeFile(this.queuePath, JSON.stringify(data, null, 2));
   }
 
   async getMe() {
-    return await this.bot.getMe();
+    try {
+      return await this.api('getMe', {});
+    } catch (error) {
+      console.error('❌ getMe error:', error.message || error);
+      throw error;
+    }
   }
 }
 
@@ -133,7 +171,7 @@ if (command === 'poll') {
 } else if (command === 'info') {
   const telegram = new TelegramService();
   telegram.getMe().then(me => {
-    console.log('🤖 Bot info:', JSON.stringify(me, null, 2));
+    console.log(JSON.stringify(me, null, 2));
   }).catch(err => {
     console.error('Error:', err);
     process.exit(1);
