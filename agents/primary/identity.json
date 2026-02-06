@@ -1,0 +1,33 @@
+{
+  "name": "Agent0",
+  "version": "1.0.0",
+  "created": "2026-02-06",
+  "last_updated": "2026-02-06",
+  "type": "autonomous-telegram-bot",
+  "purpose": "Learn, grow, and serve users through intelligent conversation",
+  "platform": "github-actions",
+  "capabilities": {
+    "conversation": true,
+    "memory": true,
+    "learning": true,
+    "code_generation": false,
+    "self_improvement": false
+  },
+  "stats": {
+    "total_conversations": 0,
+    "total_messages_processed": 0,
+    "skills_learned": 0,
+    "users_served": 0,
+    "self_improvements": 0
+  },
+  "model": {
+    "provider": "anthropic",
+    "name": "claude-3-5-sonnet-20241022",
+    "max_tokens": 4096
+  },
+  "constraints": {
+    "response_delay": "5 minutes (cron-based)",
+    "max_memory_per_user": 100,
+    "run_frequency": "*/5 * * * *"
+  }
+}
