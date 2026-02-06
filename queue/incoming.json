@@ -1,18 +1,30 @@
 {
-  "last_update_id": 517942708,
-  "last_poll": "2026-02-06T17:18:17.414Z",
+  "last_update_id": 517942710,
+  "last_poll": "2026-02-06T17:22:45.251Z",
   "messages": [
     {
-      "update_id": 517942708,
-      "message_id": 2578,
+      "update_id": 517942709,
+      "message_id": 2580,
       "user_id": 3181434,
       "username": "motyar",
       "first_name": "Motyar",
-      "text": "List everything you can do for me?",
-      "timestamp": "2026-02-06T17:17:52.000Z",
+      "text": "share all the state of this github repo\n\nhow many action minutes we have used and how many available in our plan",
+      "timestamp": "2026-02-06T17:21:32.000Z",
       "chat_id": 3181434,
       "status": "processed",
-      "processed_at": "2026-02-06T17:18:21.725Z"
+      "processed_at": "2026-02-06T17:22:49.038Z"
+    },
+    {
+      "update_id": 517942710,
+      "message_id": 2581,
+      "user_id": 3181434,
+      "username": "motyar",
+      "first_name": "Motyar",
+      "text": "Write a skill to add two numbers and return result in english words",
+      "timestamp": "2026-02-06T17:21:56.000Z",
+      "chat_id": 3181434,
+      "status": "processed",
+      "processed_at": "2026-02-06T17:22:56.172Z"
     }
   ]
 }
