@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
 
 class TelegramService {
   constructor() {
@@ -160,7 +161,7 @@ class TelegramService {
 }
 
 // Only run CLI code if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const command = process.argv[2];
 
   if (command === 'poll') {
