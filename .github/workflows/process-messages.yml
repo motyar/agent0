@@ -27,7 +27,7 @@ jobs:
           
       
       - name: Install dependencies
-        run: npm ci
+        run: npm install
       
       - name: Load agent state
         run: |
