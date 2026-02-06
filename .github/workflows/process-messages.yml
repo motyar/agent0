@@ -46,12 +46,14 @@ jobs:
           node src/telegram.js poll > poll-result.json
           echo "messages_count=$(jq '.messages | length' poll-result.json)" >> $GITHUB_OUTPUT
           cat poll-result.json
-      
+
+    
       - name: Process messages
         if: steps.poll.outputs.messages_count > 0
         run: |
           echo "Processing ${{ steps.poll.outputs.messages_count }} messages..."
           node src/agent.js process
+          node telegram.js poll
           
       - name: Commit memory updates
         if: always()
