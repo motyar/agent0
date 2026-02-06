@@ -1,0 +1,81 @@
+name: Process Telegram Messages
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes
+  workflow_dispatch:
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Load agent state
+        run: |
+          echo "🤖 Loading agent soul..."
+          cat agents/primary/soul.md
+          echo ""
+          echo "📊 Agent Identity:"
+          cat agents/primary/identity.json
+      
+      - name: Poll Telegram for new messages
+        id: poll
+        run: |
+          node src/telegram.js poll > poll-result.json
+          echo "messages_count=$(jq '.messages | length' poll-result.json)" >> $GITHUB_OUTPUT
+          cat poll-result.json
+      
+      - name: Process messages
+        if: steps.poll.outputs.messages_count > 0
+        run: |
+          echo "Processing ${{ steps.poll.outputs.messages_count }} messages..."
+          node src/agent.js process
+          
+      - name: Commit memory updates
+        if: always()
+        run: |
+          git config user.name "Agent0 Bot"
+          git config user.email "agent0@github.com"
+          
+          git add memory/ queue/ agents/
+          
+          if ! git diff --staged --quiet; then
+            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+            git commit -m "🧠 Memory update - $TIMESTAMP
+            
+            - Processed ${{ steps.poll.outputs.messages_count }} messages
+            - Updated conversation history
+            
+            [automated-commit]"
+            git push
+          else
+            echo "No memory changes to commit"
+          fi
+      
+      - name: Report status
+        if: always()
+        run: |
+          echo "### 🤖 Agent0 Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Messages processed:** ${{ steps.poll.outputs.messages_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Agent version:** $(jq -r .version agents/primary/identity.json)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
