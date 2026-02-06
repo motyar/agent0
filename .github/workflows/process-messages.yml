@@ -51,9 +51,8 @@ jobs:
       - name: Process messages
         if: steps.poll.outputs.messages_count > 0
         run: |
-          echo "Processing ${{ steps.poll.outputs.messages_count }} messages..."
-          node src/agent.js process
-          node src/telegram.js poll
+              echo "Processing ${{ steps.poll.outputs.messages_count }} messages..."
+              node src/agent.js process
           
       - name: Commit memory updates
         if: always()
