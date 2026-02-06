@@ -166,7 +166,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (command === 'poll') {
     const telegram = new TelegramService();
     telegram.poll().catch(err => {
-      console.error('❌ Error:', err.message);
+      console.error('❌ Error:', err.message || err);
       process.exit(1);
     });
   } else if (command === 'info') {
@@ -174,7 +174,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     telegram.getMe().then(me => {
       console.log(JSON.stringify(me, null, 2));
     }).catch(err => {
-      console.error('❌ Error:', err.message);
+      console.error('❌ Error:', err.message || err);
       process.exit(1);
     });
   } else {
