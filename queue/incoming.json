@@ -1,28 +1,18 @@
 {
-  "last_update_id": 517942706,
-  "last_poll": "2026-02-06T17:04:57.224Z",
+  "last_update_id": 517942707,
+  "last_poll": "2026-02-06T17:16:06.183Z",
   "messages": [
     {
-      "update_id": 517942705,
-      "message_id": 2574,
+      "update_id": 517942707,
+      "message_id": 2576,
       "user_id": 3181434,
       "username": "motyar",
       "first_name": "Motyar",
-      "text": "who? hiiii there tell me about you",
-      "timestamp": "2026-02-06T16:58:13.000Z",
+      "text": "hiii",
+      "timestamp": "2026-02-06T17:15:43.000Z",
       "chat_id": 3181434,
-      "status": "pending"
-    },
-    {
-      "update_id": 517942706,
-      "message_id": 2575,
-      "user_id": 3181434,
-      "username": "motyar",
-      "first_name": "Motyar",
-      "text": "hiiii there tell me about you???",
-      "timestamp": "2026-02-06T17:04:34.000Z",
-      "chat_id": 3181434,
-      "status": "pending"
+      "status": "processed",
+      "processed_at": "2026-02-06T17:16:09.936Z"
     }
   ]
 }
