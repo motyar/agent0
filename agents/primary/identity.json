@@ -21,9 +21,8 @@
     "self_improvements": 0
   },
   "model": {
-    "provider": "anthropic",
-    "name": "claude-3-5-sonnet-20241022",
-    "max_tokens": 4096
+    "name": "gpt-4o-mini",
+    "max_tokens": 512
   },
   "constraints": {
     "response_delay": "5 minutes (cron-based)",
