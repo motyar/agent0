@@ -53,7 +53,7 @@ jobs:
         run: |
           echo "Processing ${{ steps.poll.outputs.messages_count }} messages..."
           node src/agent.js process
-          node telegram.js poll
+          node src/telegram.js poll
           
       - name: Commit memory updates
         if: always()
