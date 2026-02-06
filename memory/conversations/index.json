@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-02-06T00:00:00Z",
+  "total_conversations": 0,
+  "conversations": [],
+  "users": {},
+  "metadata": {
+    "oldest_conversation": null,
+    "newest_conversation": null,
+    "most_active_user": null
+  }
+}
