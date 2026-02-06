@@ -159,26 +159,28 @@ class TelegramService {
   }
 }
 
-// CLI interface
-const command = process.argv[2];
+// Only run CLI code if this file is executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const command = process.argv[2];
 
-if (command === 'poll') {
-  const telegram = new TelegramService();
-  telegram.poll().catch(err => {
-    console.error('Fatal error:', err);
+  if (command === 'poll') {
+    const telegram = new TelegramService();
+    telegram.poll().catch(err => {
+      console.error('Fatal error:', err);
+      process.exit(1);
+    });
+  } else if (command === 'info') {
+    const telegram = new TelegramService();
+    telegram.getMe().then(me => {
+      console.log(JSON.stringify(me, null, 2));
+    }).catch(err => {
+      console.error('Error:', err);
+      process.exit(1);
+    });
+  } else {
+    console.log('Usage: node telegram.js [poll|info]');
     process.exit(1);
-  });
-} else if (command === 'info') {
-  const telegram = new TelegramService();
-  telegram.getMe().then(me => {
-    console.log(JSON.stringify(me, null, 2));
-  }).catch(err => {
-    console.error('Error:', err);
-    process.exit(1);
-  });
-} else {
-  console.log('Usage: node telegram.js [poll|info]');
-  process.exit(1);
+  }
 }
 
 export default TelegramService;
