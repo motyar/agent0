@@ -19,6 +19,8 @@ class TaskParser {
       /can\s+you\s+create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
       /could\s+you\s+create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
       /please\s+create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
+      /start\s+(?:a\s+)?(?:demo\s+)?pr(?:\s+(?:to\s+)?(.+))?/i,
+      /(?:are\s+you\s+)?(?:able\s+to\s+)?create\s+(?:a\s+)?pr(?:\s+(?:for|to)\s+(.+))?/i,
     ];
 
     // Keywords that suggest a task/PR request
@@ -62,16 +64,29 @@ class TaskParser {
     // Try each pattern to extract the task
     for (const pattern of this.prPatterns) {
       const match = lowerText.match(pattern);
-      if (match && match[1]) {
-        return match[1].trim();
+      if (match && match[1] && match[1].trim()) {
+        let extracted = match[1].trim();
+        
+        // Clean up common phrases that aren't real task descriptions
+        // Remove variations of "this repo", "the repo", etc.
+        const cleanupPatterns = [
+          /^for\s+(this|the)\s+repo[?!.]*/i,
+          /^(this|the)\s+repo[?!.]*/i,
+          /^on\s+(this|the)\s+repo[?!.]*/i,
+        ];
+        
+        for (const cleanupPattern of cleanupPatterns) {
+          extracted = extracted.replace(cleanupPattern, '').trim();
+        }
+        
+        // If we still have content after cleanup, return it
+        if (extracted.length > 0) {
+          return extracted;
+        }
       }
     }
 
-    // If no pattern matches but it's a PR request, return full text
-    if (this.isPRRequest(text)) {
-      return text;
-    }
-
+    // If no valid task extracted, return null to trigger validation error
     return null;
   }
 

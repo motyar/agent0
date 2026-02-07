@@ -51,11 +51,11 @@ Currently, I can:
 - ✅ Remember past conversations
 - ✅ Load context from previous interactions
 - ✅ Think using Claude 3.5 Sonnet
+- ✅ Create pull requests for tasks (delegated to GitHub Copilot agents)
 
 I cannot yet (but will learn):
 - ❌ Write new skills for myself
 - ❌ Self-improve autonomously
-- ❌ Generate code
 - ❌ Search the web
 - ❌ Execute complex tools
 
