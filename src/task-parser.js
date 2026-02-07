@@ -11,16 +11,21 @@ class TaskParser {
     
     // Patterns that indicate a PR creation request
     this.prPatterns = [
+      // Standard patterns with required task descriptions
       /create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
       /make\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
       /open\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
       /create\s+(?:a\s+)?pull\s+request\s+(?:to\s+)?(.+)/i,
       /make\s+(?:a\s+)?pull\s+request\s+(?:to\s+)?(.+)/i,
-      /can\s+you\s+create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
-      /could\s+you\s+create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
-      /please\s+create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
-      /start\s+(?:a\s+)?(?:demo\s+)?pr(?:\s+(?:to\s+)?(.+))?/i,
-      /(?:are\s+you\s+)?(?:able\s+to\s+)?create\s+(?:a\s+)?pr(?:\s+(?:for|to)\s+(.+))?/i,
+      
+      // Polite request patterns
+      /^(?:can|could|please)\s+(?:you\s+)?create\s+(?:a\s+)?pr(?:\s+(?:to|for)\s+(.+))?[?!.]*$/i,
+      
+      // Question patterns (allowing filler words like "so" at the start)
+      /^(?:so\s+)?(?:are\s+you\s+)?(?:able\s+to\s+)?create\s+(?:a\s+)?pr(?:\s+(?:for|to)\s+(.+))?[?!.]*$/i,
+      
+      // Start patterns (allowing filler words like "so" at the start)
+      /^(?:so\s+)?(?:can\s+you\s+)?start\s+(?:a\s+)?(?:demo\s+)?pr(?:\s+(?:to\s+)?(.+))?[?!.]*$/i,
     ];
 
     // Keywords that suggest a task/PR request
@@ -64,8 +69,13 @@ class TaskParser {
     // Try each pattern to extract the task
     for (const pattern of this.prPatterns) {
       const match = lowerText.match(pattern);
-      if (match && match[1] && match[1].trim()) {
+      if (match && match[1]) {
         let extracted = match[1].trim();
+        
+        // If empty after trim, continue to next pattern
+        if (extracted.length === 0) {
+          continue;
+        }
         
         // Clean up common phrases that aren't real task descriptions
         // Remove variations of "this repo", "the repo", etc.
