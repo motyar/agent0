@@ -86,6 +86,9 @@ class Agent0 {
   }
 
   async think(message, conversationContext) {
+    // Build skills section if skills are loaded
+    // Note: For large skill sets, consider implementing skill selection or pagination
+    // to prevent excessive prompt sizes. Current implementation injects all skills.
     const skillsSection = this.skillsContext 
       ? `\n**AVAILABLE SKILLS FROM Skills.sh:**\n${this.skillsContext}\n\nYou can use these skills to enhance your responses and capabilities.\n` 
       : '';

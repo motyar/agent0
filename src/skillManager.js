@@ -28,7 +28,9 @@ class SkillManager {
       
       console.log(`📦 Installing skill: ${ownerRepo}...`);
       
-      // Use npx skills CLI or direct GitHub fetch
+      // Use npx skills CLI
+      // Note: Input is validated above, but for enhanced security in future versions,
+      // consider using execFile or spawn with array arguments instead of shell string
       execSync(`npx skills add ${ownerRepo}`, { 
         cwd: process.cwd(),
         stdio: 'inherit' 
