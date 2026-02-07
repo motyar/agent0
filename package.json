@@ -10,6 +10,7 @@
     "doctor": "node src/doctor.js",
     "fix": "node src/doctor.js fix",
     "stats": "node src/agent.js stats",
+    "self-improve": "node src/self-improve.js",
     "test": "echo \"Tests coming soon\" && exit 0"
   },
   "keywords": [
@@ -25,7 +26,8 @@
     "node-telegram-bot-api": "^0.66.0",
     "openai": "^4.0.0",
     "cron": "^3.1.7",
-    "@octokit/rest": "^20.0.2"
+    "@octokit/rest": "^20.0.2",
+    "@anthropic-ai/sdk": "^0.32.0"
   },
   "engines": {
     "node": ">=22.0.0"
