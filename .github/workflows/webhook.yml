@@ -29,17 +29,41 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
+      - name: Check for new messages
+        id: check_messages
+        if: github.event.action == 'telegram-message' || github.event.inputs.event_type == 'telegram-message'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          # Run lightweight check without installing dependencies
+          bash .github/scripts/check-telegram-messages.sh
+      
+      - name: No new messages
+        if: |
+          (github.event.action == 'telegram-message' || github.event.inputs.event_type == 'telegram-message') &&
+          steps.check_messages.outputs.has_messages != 'true'
+        run: |
+          echo "✅ No new messages, skipping processing"
+      
       - name: Setup Node.js
+        if: |
+          (github.event.action != 'telegram-message' && github.event.inputs.event_type != 'telegram-message') ||
+          steps.check_messages.outputs.has_messages == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
       
       - name: Install dependencies
+        if: |
+          (github.event.action != 'telegram-message' && github.event.inputs.event_type != 'telegram-message') ||
+          steps.check_messages.outputs.has_messages == 'true'
         run: npm ci
       
       - name: Process telegram message
-        if: github.event.action == 'telegram-message' || github.event.inputs.event_type == 'telegram-message'
+        if: |
+          (github.event.action == 'telegram-message' || github.event.inputs.event_type == 'telegram-message') &&
+          steps.check_messages.outputs.has_messages == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -73,6 +97,9 @@ jobs:
           # Add custom event handling logic here
       
       - name: Commit changes
+        if: |
+          (github.event.action != 'telegram-message' && github.event.inputs.event_type != 'telegram-message') ||
+          steps.check_messages.outputs.has_messages == 'true'
         run: |
           git config user.name "Agent0"
           git config user.email "agent0@github.com"
