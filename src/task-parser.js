@@ -10,6 +10,9 @@ class TaskParser {
     this.logger = new Logger({ level: 'info' });
     
     // Patterns that indicate a PR creation request
+    // Note: Some patterns have optional capture groups (.+)? to match questions like
+    // "can you create a pr?" without a task description. These will be caught by 
+    // validation later, prompting the user to provide a specific task.
     this.prPatterns = [
       // Standard patterns with required task descriptions
       /create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
@@ -60,6 +63,8 @@ class TaskParser {
 
   /**
    * Extract task description from PR request
+   * Returns null if no valid task description is found, which will trigger
+   * validation error asking user to provide a specific task.
    */
   extractTaskDescription(text) {
     if (!text) return null;
@@ -78,7 +83,9 @@ class TaskParser {
         }
         
         // Clean up common phrases that aren't real task descriptions
-        // Remove variations like "this repo", "the repo", "for this repository", etc.
+        // Remove prefixed references like "for this repo", "in this repository", etc.
+        // This allows "for this repo add feature" → "add feature"
+        // Note: Pattern doesn't anchor to end ($) to allow task description after the reference
         // Note: "repository" comes before "repo" to match the longer string first
         const cleanupPattern = /^(?:for|on|in|to)?\s*(?:this|the)\s+(?:repository|repo)[?!.]*/i;
         extracted = extracted.replace(cleanupPattern, '').trim();
