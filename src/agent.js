@@ -381,6 +381,111 @@ You can track progress at: ${result.pr_url}`;
   }
 
   /**
+   * Process a PR by fetching task details and implementing the task
+   */
+  async processPR(prNumber) {
+    try {
+      // Dynamic import for Octokit since we're in ES module
+      const { Octokit } = await import('@octokit/rest');
+      const path = await import('path');
+      
+      const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+      const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+      
+      console.log(`📋 Fetching PR #${prNumber}...`);
+      
+      // Get PR details
+      const { data: pr } = await octokit.pulls.get({
+        owner,
+        repo,
+        pull_number: prNumber
+      });
+      
+      // Extract task from PR body
+      const taskMatch = pr.body.match(/\*\*Task:\*\* (.+)/);
+      const task = taskMatch ? taskMatch[1] : process.env.TASK_DESCRIPTION || '';
+      
+      if (!task) {
+        throw new Error('Could not extract task description from PR body');
+      }
+      
+      console.log(`🎯 Task: ${task}`);
+      
+      // Use OpenAI to process the task
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4',
+          messages: [
+            {
+              role: 'system',
+              content: `You are Agent0, an autonomous coding agent. Given a task description, you need to:
+1. Analyze what needs to be done
+2. Determine which files to create or modify
+3. Generate the necessary code or content
+4. Provide the implementation as a structured response
+
+Respond in JSON format:
+{
+  "analysis": "brief analysis of the task",
+  "files": [
+    {
+      "path": "file/path.ext",
+      "action": "create|modify",
+      "content": "file content"
+    }
+  ]
+}`
+            },
+            {
+              role: 'user',
+              content: `Task: ${task}\n\nRepository: ${owner}/${repo}\nBranch: ${pr.head.ref}`
+            }
+          ],
+          temperature: 0.7
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!result.choices || !result.choices[0]) {
+        throw new Error('Invalid response from OpenAI API');
+      }
+      
+      const implementation = JSON.parse(result.choices[0].message.content);
+      
+      console.log(`💡 Analysis: ${implementation.analysis}`);
+      console.log(`📝 Will process ${implementation.files.length} file(s)`);
+      
+      // Implement the changes
+      for (const file of implementation.files) {
+        console.log(`${file.action === 'create' ? '➕' : '✏️'} ${file.path}`);
+        
+        const filePath = path.join(process.cwd(), file.path);
+        const dir = path.dirname(filePath);
+        
+        // Ensure directory exists
+        await fs.mkdir(dir, { recursive: true });
+        
+        // Write the file
+        await fs.writeFile(filePath, file.content, 'utf8');
+      }
+      
+      console.log('✅ Task implementation complete!');
+      
+      return { success: true, task, implementation };
+      
+    } catch (error) {
+      console.error('❌ Error processing PR:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Cleanup and shutdown
    */
   async shutdown() {
@@ -405,6 +510,26 @@ if (command === 'process') {
     console.error('Fatal error:', err);
     process.exit(1);
   });
+} else if (command === 'process-pr') {
+  const prNumber = parseInt(process.argv[3]);
+  
+  if (!prNumber || isNaN(prNumber)) {
+    console.error('❌ Error: PR number is required');
+    console.log('Usage: node agent.js process-pr <pr-number>');
+    process.exit(1);
+  }
+  
+  const agent = new Agent0();
+  agent.initialize()
+    .then(() => agent.processPR(prNumber))
+    .then(() => {
+      console.log('✅ PR processed successfully');
+      process.exit(0);
+    })
+    .catch(error => {
+      console.error('❌ Error processing PR:', error);
+      process.exit(1);
+    });
 } else if (command === 'stats') {
   const agent = new Agent0();
   agent.initialize().then(async () => {
@@ -417,7 +542,7 @@ if (command === 'process') {
     process.exit(1);
   });
 } else {
-  console.log('Usage: node agent.js [process|stats]');
+  console.log('Usage: node agent.js [process|process-pr <pr-number>|stats]');
   process.exit(1);
 }
 
