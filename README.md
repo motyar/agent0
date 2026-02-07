@@ -12,6 +12,7 @@ Agent0 is an autonomous AI agent that runs entirely on GitHub Actions, communica
 - **💬 Telegram Bot**: Simple text-based interface
 - **📝 Self-Aware**: Reads its own `soul.md` and understands its purpose
 - **🚀 Serverless**: No servers to maintain, runs on GitHub Actions
+- **🔧 PR Creation**: Create pull requests via bot for Copilot agent execution
 
 ## 🏗️ Architecture
 
@@ -83,6 +84,36 @@ Agent0: I can have conversations and remember them forever in Git...
 You: Do you remember what we talked about?
 Agent0: Yes! Last time you asked me about...
 ```
+
+### 🔧 Creating PRs via Bot
+
+You can ask Agent0 to create pull requests that will be executed by GitHub Copilot agents:
+
+```
+You: Create a PR to add a health check endpoint
+Agent0: ✅ PR Created Successfully!
+        PR: #123
+        Branch: bot-task/add-a-health-check-endpoint-1234567890
+        The PR is now ready for GitHub Copilot agents to work on.
+
+You: Make a PR to fix authentication bug
+Agent0: ✅ PR Created Successfully!
+        ...
+```
+
+**Supported formats:**
+- "create a PR to [task description]"
+- "make a PR to [task description]"
+- "create a pull request to [task description]"
+- "can you create a PR to [task description]"
+- "please create a PR to [task description]"
+
+The bot will:
+1. Parse your task request
+2. Create a new branch
+3. Create a pull request with detailed instructions
+4. Label it for Copilot agent execution
+5. Return the PR link to you
 
 ## 🧠 How Memory Works
 
@@ -171,6 +202,7 @@ Automatically tracks:
 - ✅ Usage tracking
 - ✅ Retry policy for API calls
 - ✅ Session pruning and context management
+- ✅ PR creation via bot for Copilot agents
 
 **Coming Soon**:
 - ⏳ Hot reload for TypeScript changes

@@ -1,11 +1,91 @@
 # Agent0 Features Documentation
 
 ## Table of Contents
+- [PR Creation via Bot](#pr-creation-via-bot)
 - [Automation & Scheduling](#automation--scheduling)
 - [Skills & Extensions](#skills--extensions)
 - [Sandbox Mode](#sandbox-mode)
 - [Developer Features](#developer-features)
 - [Additional Features](#additional-features)
+
+## PR Creation via Bot
+
+Create pull requests directly from Telegram bot messages for execution by GitHub Copilot agents.
+
+### How It Works
+
+1. **Send a Task Request**: Message the bot with your task
+2. **PR Creation**: Bot automatically creates a branch and pull request
+3. **Copilot Execution**: GitHub Copilot agents execute the task
+4. **Track Progress**: Monitor the PR for updates
+
+### Usage
+
+**Supported Commands**:
+- `create a PR to [task]`
+- `make a PR to [task]`
+- `create a pull request to [task]`
+- `can you create a PR to [task]`
+- `please create a PR to [task]`
+
+**Examples**:
+```
+You: create a PR to add a health check endpoint
+Bot: ✅ PR Created Successfully!
+     PR: #123
+     Branch: bot-task/add-a-health-check-endpoint-1234567890
+```
+
+```
+You: make a PR to fix authentication bug in login flow
+Bot: ✅ PR Created Successfully!
+     PR: #124
+     Branch: bot-task/fix-authentication-bug-in-login-flow-1234567891
+```
+
+### Requirements
+
+- `GITHUB_TOKEN` must be set in environment variables
+- Workflow must have `pull-requests: write` permission
+- Task description must be at least 10 characters
+
+### PR Format
+
+Created PRs include:
+- **Title**: `Bot Task: [task description]`
+- **Body**: Detailed instructions for Copilot agents
+- **Labels**: `bot-task`, `copilot`
+- **Branch**: `bot-task/[sanitized-task]-[timestamp]`
+
+### Configuration
+
+The feature requires these environment variables in GitHub Actions:
+```yaml
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_REPOSITORY: ${{ github.repository }}
+```
+
+And these permissions:
+```yaml
+permissions:
+  contents: write
+  pull-requests: write
+```
+
+### Implementation
+
+**Core Files**:
+- `src/github-service.js` - GitHub API integration
+- `src/task-parser.js` - Parse task requests from messages
+- `src/agent.js` - Handle PR creation in message processing
+
+**Features**:
+- Automatic branch creation from main
+- Sanitized branch names
+- Detailed PR descriptions for Copilot
+- Error handling and user feedback
+- Validation of task descriptions
 
 ## Automation & Scheduling
 
