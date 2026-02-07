@@ -436,10 +436,247 @@ const result = await llm.complete({ messages });
 - ✅ Enhanced Memory Search
 - ✅ Webhook Support
 - ✅ PR Creation via Bot
-- 🚧 Semantic Search (basic implementation)
-- ⏳ Hot Reload
-- ⏳ Docker Sandbox
-- ⏳ Streaming Responses
+- ✅ Semantic Search (vector embeddings)
+- ✅ Multi-agent Routing
+- ✅ Hot Reload
+- ✅ Docker Sandbox
+- ✅ Streaming Responses
+- ✅ Web Search Integration
+- ✅ Advanced Tool Execution (TypeBox)
+
+## Phase 3 Features (NEW)
+
+### Semantic Memory Search
+
+Advanced conversation search using OpenAI embeddings and cosine similarity.
+
+**Features:**
+- Automatic embedding generation for all conversations
+- Vector similarity search with configurable threshold
+- Fallback to keyword search if embeddings unavailable
+- Persistent embedding storage alongside conversations
+
+**Usage:**
+```javascript
+// Search semantically similar conversations
+const results = await memory.semanticSearch(userId, 'explain docker containers', {
+  limit: 5,
+  minSimilarity: 0.7
+});
+
+// Results include similarity scores
+results.forEach(result => {
+  console.log(`Similarity: ${result.similarity}`);
+  console.log(`User: ${result.user}`);
+  console.log(`Bot: ${result.bot}`);
+});
+```
+
+**Configuration:**
+- Uses `text-embedding-3-small` model by default
+- Embeddings stored in `memory/embeddings/` directory
+- Requires `OPENAI_API_KEY` environment variable
+
+### Multi-agent Collaboration
+
+Route messages to different specialized agents based on configuration.
+
+**Features:**
+- Parse AGENTS.md for agent configuration
+- Channel-based routing
+- Capability-based routing
+- Task-type routing
+- Agent hand-offs with context preservation
+
+**Configuration in AGENTS.md:**
+```json
+{
+  "routing": {
+    "enabled": true,
+    "strategy": "channel-based",
+    "agents": {
+      "primary": {
+        "channels": ["*"],
+        "model": "gpt-4o-mini",
+        "capabilities": ["conversation", "memory", "learning"]
+      },
+      "support": {
+        "channels": ["support"],
+        "model": "gpt-4o-mini",
+        "capabilities": ["conversation", "help"]
+      }
+    }
+  }
+}
+```
+
+**Usage:**
+```javascript
+// Route message to appropriate agent
+const agentId = router.route(message, { channel: 'support' });
+
+// Hand off to another agent
+const handoff = router.handoff('primary', 'support', 'User needs technical help');
+```
+
+### Docker-based Sandbox Mode
+
+Execute untrusted code safely in isolated Docker containers.
+
+**Features:**
+- Support for JavaScript, Python, and Bash
+- Network isolation (no network access)
+- Resource limits (CPU, memory)
+- Read-only file system
+- Automatic timeout and cleanup
+- Code validation before execution
+
+**Usage:**
+```javascript
+const sandbox = new Sandbox();
+
+// Execute code
+const result = await sandbox.executeCode(`
+  console.log('Hello from sandbox!');
+  console.log(2 + 2);
+`, 'javascript');
+
+console.log(result.output); // Output from code
+console.log(result.executionTime); // Execution time in ms
+```
+
+**Requirements:**
+- Docker must be installed and running
+- Default images: `node:22-alpine`, `python:3.12-alpine`, `alpine:latest`
+
+**Security:**
+- No network access
+- Limited memory (128MB default)
+- CPU limits (0.5 CPUs default)
+- 30-second timeout default
+- Read-only filesystem with small writable /tmp
+
+### Hot Reload for Code Changes
+
+Automatically reload components when source code changes.
+
+**Features:**
+- Watch `src/` directory for changes
+- Debounced reload (1 second delay)
+- Component-specific reload strategies
+- Graceful handling of errors
+- Exclude node_modules and test files
+
+**Usage:**
+```javascript
+const agent = new Agent0({ enableHotReload: true });
+await agent.initialize();
+// Now any changes to src/ files will trigger automatic reload
+```
+
+**Supported Components:**
+- Memory engine
+- Telegram service
+- Scheduler
+- Skills system
+- Agent router
+- Sandbox
+
+### Streaming Responses
+
+Real-time response updates in Telegram as the LLM generates text.
+
+**Features:**
+- Stream OpenAI completions
+- Update Telegram messages in real-time
+- Configurable update interval (500ms default)
+- Graceful fallback on errors
+
+**Implementation:**
+```javascript
+// Telegram service now supports streaming
+const streamIterator = getStreamFromOpenAI();
+await telegram.sendStreamingMessage(chatId, streamIterator, {
+  updateInterval: 500
+});
+```
+
+**Benefits:**
+- Better user experience with immediate feedback
+- Reduces perceived latency
+- Shows "thinking" progress
+
+### Web Search Integration
+
+Search the web using DuckDuckGo or Bing APIs.
+
+**Features:**
+- DuckDuckGo Instant Answer API (free, no key required)
+- Bing Search API (requires API key)
+- Configurable result count
+- Formatted results with snippets
+- Automatic provider selection
+
+**Usage:**
+```javascript
+const webSearch = new WebSearch();
+
+// Search using DuckDuckGo (default)
+const results = await webSearch.search('OpenAI GPT-4', { maxResults: 5 });
+
+// Format results for display
+const formatted = webSearch.formatResults(results);
+console.log(formatted);
+```
+
+**Tool Integration:**
+```javascript
+// Available as agent tool
+{
+  name: 'web_search',
+  description: 'Search the web for information',
+  parameters: {
+    query: { type: 'string' },
+    maxResults: { type: 'number', default: 5 }
+  }
+}
+```
+
+### Advanced Tool Execution with TypeBox
+
+Schema validation and better type safety for tool parameters.
+
+**Features:**
+- TypeBox schema definitions
+- Runtime parameter validation
+- Better LLM understanding
+- Type inference
+- Pattern matching and constraints
+
+**Example Schema:**
+```javascript
+import { Type } from '@sinclair/typebox';
+
+const schema = Type.Object({
+  code: Type.String({
+    description: 'Code to execute',
+    maxLength: 50000
+  }),
+  language: Type.Union([
+    Type.Literal('javascript'),
+    Type.Literal('python'),
+    Type.Literal('bash')
+  ], {
+    default: 'javascript'
+  })
+});
+```
+
+**Benefits:**
+- Compile-time type checking
+- Runtime validation
+- Better error messages
+- Improved LLM tool calling accuracy
 
 ## Support
 
