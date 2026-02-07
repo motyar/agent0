@@ -276,9 +276,6 @@ npm run poll          # Poll for Telegram messages
 - [x] Context-aware responses
 - [x] Cron jobs and scheduled tasks
 - [x] Skills platform
-- [x] Doctor command
-- [x] Usage tracking
-- [x] Logging system
 
 ### Phase 2: Enhanced Features ← **COMPLETE**
 - [x] Multi-provider LLM support

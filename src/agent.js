@@ -92,18 +92,23 @@ Respond now:`;
     const modelName = (this.identity && this.identity.model && this.identity.model.name) || 'gpt-4o-mini';
     const maxTokens = (this.identity && this.identity.model && this.identity.model.max_tokens) || 512;
 
-    // Make direct API call
-    const response = await this.openai.chat.completions.create({
-      model: modelName,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: maxTokens
-    });
+    // Make direct API call with basic error handling
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: modelName,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: maxTokens
+      });
 
-    const responseText = response.choices[0].message.content;
+      const responseText = response.choices[0].message.content;
 
-    console.log(`Generated response (${responseText.length} chars, ${response.usage?.total_tokens || 0} tokens)`);
+      console.log(`Generated response (${responseText.length} chars, ${response.usage?.total_tokens || 0} tokens)`);
 
-    return responseText;
+      return responseText;
+    } catch (error) {
+      console.error('Error calling OpenAI API:', error.message);
+      throw error;
+    }
   }
 
 
