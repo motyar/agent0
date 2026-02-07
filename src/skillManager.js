@@ -11,19 +11,37 @@ class SkillManager {
   /**
    * Install a skill from Skills.sh using npx skills CLI
    * @param {string} ownerRepo - Repository in format "owner/repo"
-   * @returns {Promise<boolean>} - Success status
+   * @returns {Promise<Object>} - Result object with success status and detailed message
    */
   async installSkill(ownerRepo) {
     try {
       // Validate ownerRepo format to prevent command injection
       if (!ownerRepo || typeof ownerRepo !== 'string') {
-        throw new Error('Invalid ownerRepo: must be a string');
+        return {
+          success: false,
+          error: 'INVALID_INPUT',
+          message: 'Invalid repository format: must be a non-empty string'
+        };
       }
       
       // Validate format: owner/repo (alphanumeric, hyphens, underscores)
       const validPattern = /^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/;
       if (!validPattern.test(ownerRepo)) {
-        throw new Error('Invalid ownerRepo format: must be "owner/repo" with alphanumeric characters, hyphens, or underscores only');
+        return {
+          success: false,
+          error: 'INVALID_FORMAT',
+          message: 'Invalid repository format: must be "owner/repo" with alphanumeric characters, hyphens, or underscores only'
+        };
+      }
+      
+      // Check if repository exists on GitHub before attempting installation
+      const repoExists = await this.validateGitHubRepository(ownerRepo);
+      if (!repoExists) {
+        return {
+          success: false,
+          error: 'REPOSITORY_NOT_FOUND',
+          message: `Repository "${ownerRepo}" does not exist or is not accessible on GitHub`
+        };
       }
       
       console.log(`📦 Installing skill: ${ownerRepo}...`);
@@ -37,10 +55,78 @@ class SkillManager {
       });
       
       console.log(`✓ Installed skill: ${ownerRepo}`);
-      return true;
+      return {
+        success: true,
+        message: `Successfully installed skill: ${ownerRepo}`
+      };
     } catch (error) {
       console.error(`Failed to install skill ${ownerRepo}:`, error.message);
-      return false;
+      
+      // Determine specific error type
+      if (error.message.includes('not found') || error.message.includes('404')) {
+        return {
+          success: false,
+          error: 'REPOSITORY_NOT_FOUND',
+          message: `Repository "${ownerRepo}" not found or not accessible`
+        };
+      } else if (error.message.includes('permission') || error.message.includes('403')) {
+        return {
+          success: false,
+          error: 'PERMISSION_DENIED',
+          message: `Permission denied accessing repository "${ownerRepo}"`
+        };
+      } else if (error.message.includes('network') || error.message.includes('ENOTFOUND')) {
+        return {
+          success: false,
+          error: 'NETWORK_ERROR',
+          message: 'Network error: Unable to connect to GitHub or Skills.sh'
+        };
+      }
+      
+      return {
+        success: false,
+        error: 'INSTALLATION_FAILED',
+        message: `Failed to install skill: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Validate that a GitHub repository exists and is accessible
+   * @param {string} ownerRepo - Repository in format "owner/repo"
+   * @returns {Promise<boolean>} - True if repository exists and is accessible
+   */
+  async validateGitHubRepository(ownerRepo) {
+    try {
+      const [owner, repo] = ownerRepo.split('/');
+      
+      // Use GitHub API to check if repository exists
+      // This uses the public API which doesn't require authentication for public repos
+      const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Agent0-SkillManager'
+        }
+      });
+      
+      if (response.status === 200) {
+        return true;
+      } else if (response.status === 404) {
+        console.log(`Repository ${ownerRepo} not found on GitHub`);
+        return false;
+      } else if (response.status === 403) {
+        // Rate limited or forbidden - we can't verify but shouldn't block
+        console.warn(`GitHub API rate limit or forbidden for ${ownerRepo}, proceeding anyway`);
+        return true;
+      }
+      
+      // For other status codes, proceed cautiously
+      console.warn(`Unexpected GitHub API response ${response.status} for ${ownerRepo}, proceeding anyway`);
+      return true;
+    } catch (error) {
+      // Network errors or other issues - don't block the installation
+      console.warn(`Could not validate repository ${ownerRepo}:`, error.message);
+      return true;
     }
   }
 

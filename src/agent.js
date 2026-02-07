@@ -603,25 +603,19 @@ Respond now:`;
         };
       }
       
-      const success = await this.skillManager.installSkill(ownerRepo);
+      const result = await this.skillManager.installSkill(ownerRepo);
       
-      if (success) {
+      if (result.success) {
         // Reload skills context
         this.skillsContext = await this.skillManager.getSkillsContext();
-        return {
-          success: true,
-          message: `Successfully installed skill: ${ownerRepo}`
-        };
-      } else {
-        return {
-          success: false,
-          message: 'Failed to install skill. The repository may not exist or the skill format is invalid.'
-        };
       }
+      
+      return result;
     } catch (error) {
       return {
         success: false,
-        message: `Error installing skill: ${error.message}`
+        error: 'UNEXPECTED_ERROR',
+        message: `Unexpected error installing skill: ${error.message}`
       };
     }
   }
