@@ -7,6 +7,8 @@
   "scripts": {
     "start": "node src/agent.js",
     "poll": "node src/telegram.js poll",
+    "doctor": "node src/doctor.js",
+    "fix": "node src/doctor.js fix",
     "test": "echo \"Tests coming soon\" && exit 0"
   },
   "keywords": [
@@ -20,7 +22,8 @@
   "license": "MIT",
   "dependencies": {
     "node-telegram-bot-api": "^0.66.0",
-     "openai": "^4.0.0" 
+    "openai": "^4.0.0",
+    "cron": "^3.1.7"
   },
   "engines": {
     "node": ">=22.0.0"

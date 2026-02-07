@@ -93,6 +93,8 @@ The agent can recall past conversations and build context over time.
 
 ## ⚙️ Configuration
 
+### Agent Configuration
+
 Edit `agents/primary/identity.json` to configure:
 - Model parameters
 - Response limits
@@ -102,6 +104,54 @@ Edit `agents/primary/soul.md` to change:
 - Personality
 - Core beliefs
 - Goals
+
+### Workspace Configuration
+
+Create or edit these files to customize behavior:
+- `AGENTS.md` - Agent routing and multi-agent configuration
+- `TOOLS.md` - Available tools and integrations
+
+### Scheduled Tasks
+
+Edit `config/scheduler.json` to configure:
+- Cron jobs for periodic tasks
+- Wakeup tasks for time-based triggers
+
+### Skills Management
+
+Skills are organized in three directories:
+- `skills/bundled/` - Built-in skills
+- `skills/managed/` - Installed skills
+- `skills/workspace/` - Custom workspace skills
+
+## 🛠️ Developer Tools
+
+### Doctor Command
+
+Diagnose configuration issues:
+```bash
+npm run doctor
+```
+
+Automatically fix common issues:
+```bash
+npm run fix
+```
+
+### Health Checks
+
+Monitor gateway health and system status. Health checks run automatically every 15 minutes.
+
+### Logging
+
+Comprehensive logging with configurable log levels (error, warn, info, debug, trace).
+
+### Usage Tracking
+
+Automatically tracks:
+- API requests and token usage
+- Costs by model and date
+- Performance metrics
 
 ## 📊 Current Status
 
@@ -113,11 +163,23 @@ Edit `agents/primary/soul.md` to change:
 - ✅ Conversation memory
 - ✅ Context-aware responses
 - ✅ Git-based persistence
+- ✅ Cron jobs and scheduled tasks
+- ✅ Skills platform (bundled, managed, workspace)
+- ✅ Health checks and monitoring
+- ✅ Doctor command for diagnostics
+- ✅ Comprehensive logging system
+- ✅ Usage tracking
+- ✅ Retry policy for API calls
+- ✅ Session pruning and context management
 
 **Coming Soon**:
+- ⏳ Hot reload for TypeScript changes
+- ⏳ Docker-based sandbox mode
+- ⏳ Multi-agent routing
+- ⏳ Presence indicators
+- ⏳ Streaming responses
 - ⏳ Self-improvement loop
 - ⏳ Code generation
-- ⏳ Custom skills
 
 ## ⚠️ Limitations
 
@@ -128,10 +190,16 @@ Edit `agents/primary/soul.md` to change:
 
 ## 🔮 Roadmap
 
-### Phase 1: MVP ← **YOU ARE HERE**
+### Phase 1: MVP ← **COMPLETE**
 - [x] Basic Telegram bot
 - [x] Memory system
 - [x] Context-aware responses
+- [x] Cron jobs and scheduled tasks
+- [x] Skills platform
+- [x] Health checks
+- [x] Doctor command
+- [x] Usage tracking
+- [x] Logging system
 
 ### Phase 2: Self-Improvement
 - [ ] Nightly self-analysis
@@ -142,6 +210,10 @@ Edit `agents/primary/soul.md` to change:
 ### Phase 3: Advanced
 - [ ] Semantic memory search
 - [ ] Multi-agent collaboration
+- [ ] Docker-based sandbox mode
+- [ ] Hot reload for TypeScript
+- [ ] Presence indicators
+- [ ] Streaming responses
 - [ ] Web search integration
 - [ ] Tool execution
 
