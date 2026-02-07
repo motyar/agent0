@@ -35,14 +35,15 @@ class SkillManager {
       }
       
       // Check if repository exists on GitHub before attempting installation
-      const repoExists = await this.validateGitHubRepository(ownerRepo);
-      if (!repoExists) {
+      const validationResult = await this.validateGitHubRepository(ownerRepo);
+      if (validationResult === false) {
         return {
           success: false,
           error: 'REPOSITORY_NOT_FOUND',
           message: `Repository "${ownerRepo}" does not exist or is not accessible on GitHub`
         };
       }
+      // If validationResult is true or null (couldn't validate), proceed with installation
       
       console.log(`📦 Installing skill: ${ownerRepo}...`);
       
@@ -62,20 +63,24 @@ class SkillManager {
     } catch (error) {
       console.error(`Failed to install skill ${ownerRepo}:`, error.message);
       
-      // Determine specific error type
-      if (error.message.includes('not found') || error.message.includes('404')) {
+      // Determine specific error type based on error characteristics
+      const errorMsg = error.message?.toLowerCase() || '';
+      const errorCode = error.code?.toLowerCase() || '';
+      
+      if (errorMsg.includes('not found') || errorMsg.includes('404') || errorCode === 'enoent') {
         return {
           success: false,
           error: 'REPOSITORY_NOT_FOUND',
           message: `Repository "${ownerRepo}" not found or not accessible`
         };
-      } else if (error.message.includes('permission') || error.message.includes('403')) {
+      } else if (errorMsg.includes('permission') || errorMsg.includes('403') || errorCode === 'eacces') {
         return {
           success: false,
           error: 'PERMISSION_DENIED',
           message: `Permission denied accessing repository "${ownerRepo}"`
         };
-      } else if (error.message.includes('network') || error.message.includes('ENOTFOUND')) {
+      } else if (errorMsg.includes('network') || errorMsg.includes('enotfound') || 
+                 errorMsg.includes('etimedout') || errorCode === 'enotfound' || errorCode === 'etimedout') {
         return {
           success: false,
           error: 'NETWORK_ERROR',
@@ -94,7 +99,7 @@ class SkillManager {
   /**
    * Validate that a GitHub repository exists and is accessible
    * @param {string} ownerRepo - Repository in format "owner/repo"
-   * @returns {Promise<boolean>} - True if repository exists and is accessible
+   * @returns {Promise<boolean|null>} - True if repository exists, false if not found, null if validation couldn't be performed
    */
   async validateGitHubRepository(ownerRepo) {
     try {
@@ -115,18 +120,18 @@ class SkillManager {
         console.log(`Repository ${ownerRepo} not found on GitHub`);
         return false;
       } else if (response.status === 403) {
-        // Rate limited or forbidden - we can't verify but shouldn't block
-        console.warn(`GitHub API rate limit or forbidden for ${ownerRepo}, proceeding anyway`);
-        return true;
+        // Rate limited or forbidden - we can't verify so return null
+        console.warn(`GitHub API rate limit or forbidden for ${ownerRepo}, skipping validation`);
+        return null;
       }
       
-      // For other status codes, proceed cautiously
-      console.warn(`Unexpected GitHub API response ${response.status} for ${ownerRepo}, proceeding anyway`);
-      return true;
+      // For other status codes, return null to indicate validation couldn't be completed
+      console.warn(`Unexpected GitHub API response ${response.status} for ${ownerRepo}, skipping validation`);
+      return null;
     } catch (error) {
-      // Network errors or other issues - don't block the installation
+      // Network errors or other issues - return null to indicate validation couldn't be completed
       console.warn(`Could not validate repository ${ownerRepo}:`, error.message);
-      return true;
+      return null;
     }
   }
 
