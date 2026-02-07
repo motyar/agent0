@@ -1,12 +1,174 @@
 # Agent0 Features Documentation
 
 ## Table of Contents
+- [Core Architecture](#core-architecture)
+- [Skills Engine](#skills-engine)
+- [Multi-Provider LLM](#multi-provider-llm)
+- [Self-Improvement](#self-improvement)
 - [PR Creation via Bot](#pr-creation-via-bot)
+- [Memory System](#memory-system)
+- [Monitoring](#monitoring)
 - [Automation & Scheduling](#automation--scheduling)
-- [Skills & Extensions](#skills--extensions)
-- [Sandbox Mode](#sandbox-mode)
 - [Developer Features](#developer-features)
-- [Additional Features](#additional-features)
+
+## Core Architecture
+
+Agent0 has been architected for simplicity and extensibility:
+
+### Monitor (Consolidated)
+Combines logging, health checks, and usage tracking into a single unified system.
+
+**Features:**
+- Configurable log levels (error, warn, info, debug, trace)
+- Health check registration and monitoring
+- API usage and cost tracking
+- Colored console output with timestamps
+
+**Usage:**
+```javascript
+import Monitor from './src/monitor.js';
+
+const monitor = new Monitor({ level: 'info' });
+
+// Logging
+monitor.info('Agent starting...');
+monitor.error('Failed to connect');
+
+// Health checks
+monitor.register('api', async () => {
+  // Check API health
+  return { status: 'ok' };
+});
+
+await monitor.runAll();
+
+// Usage tracking
+monitor.track('gpt-4o-mini', 150, 0.0002);
+const summary = monitor.getSummary();
+```
+
+## Skills Engine
+
+Auto-discovery system for modular capabilities. Skills are automatically discovered from three locations:
+
+- `skills/bundled/` - Built-in skills
+- `skills/managed/` - Installed skills  
+- `skills/workspace/` - Custom skills
+
+### Built-in Skills
+
+**core** - Essential system operations
+- Actions: ping, status, echo, help
+
+**github** - GitHub API integrations
+- Actions: status, create_issue, create_pr, help
+
+**help** - Documentation and assistance
+- Topics: skills, commands, setup
+
+See [skills/README.md](skills/README.md) for detailed documentation.
+
+## Multi-Provider LLM
+
+Abstraction layer supporting multiple AI providers with a unified interface.
+
+### Supported Providers
+
+**OpenAI:**
+- gpt-4o-mini (default, fast and affordable)
+- gpt-4o (high performance)
+- gpt-4 (legacy)
+- gpt-3.5-turbo (legacy)
+
+**Anthropic:**
+- claude-3-5-sonnet-20241022 (most intelligent)
+- claude-3-5-haiku-20241022 (fast and affordable)
+- claude-3-opus-20240229 (legacy)
+
+### Configuration
+
+Models are configured in `config/models.json`:
+
+```json
+{
+  "default_provider": "openai",
+  "default_model": "gpt-4o-mini",
+  "providers": {
+    "openai": {
+      "enabled": true,
+      "models": { ... }
+    },
+    "anthropic": {
+      "enabled": true,
+      "models": { ... }
+    }
+  }
+}
+```
+
+### Usage
+
+```javascript
+import LLM from './src/llm.js';
+
+const llm = new LLM();
+await llm.initialize();
+
+// Use default provider/model
+const result = await llm.complete({
+  messages: [
+    { role: 'user', content: 'Hello!' }
+  ]
+});
+
+// Specify provider and model
+const result = await llm.complete({
+  messages: [...],
+  provider: 'anthropic',
+  model: 'claude-3-5-haiku-20241022'
+});
+
+console.log(result.content);
+console.log(`Cost: $${result.cost.toFixed(4)}`);
+```
+
+## Self-Improvement
+
+Automated analysis and improvement suggestion system.
+
+### How It Works
+
+1. **Daily Analysis** - Runs automatically at 2 AM UTC
+2. **Data Collection** - Gathers performance metrics, conversations, capabilities
+3. **AI Analysis** - Uses LLM to analyze agent performance
+4. **Suggestions** - Generates actionable improvement recommendations
+5. **Issue Creation** - Automatically creates GitHub issues with suggestions
+
+### Manual Execution
+
+```bash
+npm run self-improve
+```
+
+### Analysis Output
+
+Results are saved to `memory/self-improvement/analysis-YYYY-MM-DD.json`:
+
+```json
+{
+  "timestamp": "2026-02-07T12:00:00.000Z",
+  "analysis": "Analysis text...",
+  "suggestions": [
+    {
+      "title": "Add web search capability",
+      "priority": "High",
+      "type": "Feature",
+      "description": "...",
+      "implementation": "..."
+    }
+  ]
+}
+```
 
 ## PR Creation via Bot
 
@@ -87,6 +249,101 @@ permissions:
 - Error handling and user feedback
 - Validation of task descriptions
 
+## Memory System
+
+Git-based conversation persistence with enhanced search and summarization.
+
+### Features
+
+**Persistent Storage:**
+- One file per user per month
+- Automatic directory organization
+- Git-based versioning
+- Up to 100 turns per user
+
+**Enhanced Search:**
+- Keyword matching with relevance scoring
+- Multi-word query support
+- Configurable result limits
+
+**Summarization:**
+- Topic extraction from conversations
+- Sentiment analysis (positive/negative/neutral)
+- Time-based filtering
+- Conversation statistics
+
+### Usage
+
+```javascript
+import MemoryEngine from './src/memory-engine.js';
+
+const memory = new MemoryEngine();
+
+// Store conversation
+await memory.remember(userId, userMessage, botResponse);
+
+// Recall history
+const history = await memory.recall(userId, limit=10);
+
+// Search memories
+const results = await memory.search(userId, 'query', {
+  limit: 50,
+  minScore: 0.3
+});
+
+// Summarize conversations
+const summary = await memory.summarize(userId, { limit: 100 });
+console.log(summary.topics);
+console.log(summary.sentiment);
+```
+
+## Monitoring
+
+Consolidated monitoring system combining logging, health checks, and usage tracking.
+
+### Logging
+
+Multi-level logging with color-coded output:
+
+```javascript
+monitor.error('Critical error');   // Red
+monitor.warn('Warning');           // Yellow  
+monitor.info('Information');       // Cyan
+monitor.debug('Debug info');       // Magenta
+monitor.trace('Trace details');    // White
+```
+
+### Health Checks
+
+Register and run health checks:
+
+```javascript
+monitor.register('database', async () => {
+  await db.ping();
+  return { status: 'healthy' };
+}, { 
+  interval: 60000,
+  critical: true 
+});
+
+const results = await monitor.runAll();
+```
+
+### Usage Tracking
+
+Track API usage and costs:
+
+```javascript
+monitor.track(model, tokens, cost);
+
+const summary = monitor.getSummary();
+// {
+//   total: { requests, tokens, cost },
+//   by_model: { ... },
+//   by_date: { ... }
+// }
+```
+
 ## Automation & Scheduling
 
 ### Cron Jobs
@@ -144,309 +401,141 @@ Time-based triggers that execute once at a specific time.
 - Set reminders
 - Trigger maintenance tasks at specific times
 
-## Skills & Extensions
+### Webhook Support
 
-### Skills Platform
-Manage and execute modular skills for extended functionality.
+Real-time event processing via GitHub repository dispatch.
 
-**Skill Types**:
-1. **Bundled Skills** - Built-in skills shipped with Agent0
-2. **Managed Skills** - Installed skills from external sources
-3. **Workspace Skills** - Custom skills specific to your workspace
+**Workflow:** `.github/workflows/webhook.yml`
 
-**Directory Structure**:
+**Trigger Events:**
+- telegram-message - Process messages in real-time
+- health-check - Run diagnostics
+- custom - Handle custom events
+
+**Example Trigger:**
+```bash
+curl -X POST \
+  https://api.github.com/repos/OWNER/REPO/dispatches \
+  -H "Authorization: token $GITHUB_TOKEN" \
+  -H "Accept: application/vnd.github.v3+json" \
+  -d '{"event_type": "telegram-message"}'
 ```
-skills/
-├── bundled/       # Built-in skills
-├── managed/       # Installed skills
-└── workspace/     # Custom skills
-```
-
-**Creating a Skill**:
-```javascript
-// skills/workspace/my-skill.js
-const mySkill = {
-  name: 'my_skill',
-  version: '1.0.0',
-  description: 'My custom skill',
-  
-  async execute(params) {
-    // Your skill logic here
-    return { success: true };
-  }
-};
-
-export default mySkill;
-```
-
-**Using Skills**:
-```javascript
-import SkillsManager from './src/skills-manager.js';
-
-const skills = new SkillsManager();
-await skills.initialize();
-
-// Execute a skill
-const result = await skills.executeSkill('my_skill', { param: 'value' });
-
-// List all skills
-const allSkills = skills.listSkills();
-```
-
-### Custom Workspace Configuration
-
-Configure agent behavior using workspace files:
-
-#### AGENTS.md
-Configure multi-agent routing and agent-specific settings.
-
-**Features**:
-- Define multiple agent instances
-- Configure routing strategies
-- Set agent capabilities
-
-#### TOOLS.md
-Define available tools and integrations.
-
-**Features**:
-- Document tool capabilities
-- Configure tool permissions
-- Set retry policies and streaming options
-
-## Sandbox Mode
-
-Docker-based isolation for non-main sessions (Planned).
-
-**Purpose**:
-- Isolate code execution
-- Protect main system from potentially harmful operations
-- Test new skills safely
-
-**Status**: 🚧 Coming in Phase 3
 
 ## Developer Features
 
-### Hot Reload
-Auto-reload on TypeScript changes (Planned).
+### Self-Improvement Workflow
 
-**Status**: 🚧 Coming in Phase 3
+Automated daily analysis with issue creation.
 
-### Debug Tools
-Built-in debugging capabilities.
+**File:** `.github/workflows/self-improve.yml`
 
-**Features**:
-- Comprehensive error logging
-- Stack traces
-- Performance monitoring
+**Schedule:** Daily at 2 AM UTC
 
-### Health Checks
-Gateway health monitoring system.
+**Process:**
+1. Run analysis
+2. Commit results to memory/self-improvement/
+3. Extract improvement suggestions
+4. Create GitHub issue with findings
 
-**Usage**:
-```javascript
-import HealthCheck from './src/health-check.js';
+### Available Commands
 
-const health = new HealthCheck();
-
-// Register a health check
-health.register('api', async () => {
-  // Check if API is responding
-  return { status: 'ok' };
-}, { interval: 60000 });
-
-// Run all checks
-const results = await health.runAll();
+```bash
+npm run start         # Start agent
+npm run poll          # Poll Telegram
+npm run doctor        # System diagnostics
+npm run fix           # Auto-fix issues
+npm run stats         # View statistics
+npm run self-improve  # Run self-improvement
 ```
-
-**Built-in Checks**:
-- System health
-- API connectivity
-- Memory usage
-- Configuration validity
-
-**Schedule**: Runs every 15 minutes via cron
 
 ### Doctor Command
-Diagnose and fix configuration issues.
 
-**Usage**:
+System diagnostics and automatic fixes:
+
 ```bash
-# Run diagnostics
-npm run doctor
-
-# Attempt automatic fixes
-npm run fix
+npm run doctor  # Diagnose issues
+npm run fix     # Auto-fix common problems
 ```
 
-**Checks**:
-- ✅ Node.js version
-- ✅ Package dependencies
-- ✅ Environment variables
-- ✅ Directory structure
-- ✅ Agent configuration
-- ✅ Workflow files
+**Checks:**
+- Node.js version
+- Package dependencies
+- Environment variables
+- Directory structure
+- Configuration validity
 
-### Logging System
-Comprehensive logging with multiple levels.
+## Migration Guide
 
-**Log Levels**:
-- `error` - Critical errors
-- `warn` - Warnings
-- `info` - General information (default)
-- `debug` - Debug information
-- `trace` - Detailed trace information
+### From Old Architecture
 
-**Usage**:
+The following modules have been consolidated:
+
+**Logger, HealthCheck, UsageTracker → Monitor**
 ```javascript
-import Logger from './src/logger.js';
+// Old
+import Logger from './logger.js';
+import HealthCheck from './health-check.js';
+import UsageTracker from './usage-tracker.js';
 
-const logger = new Logger({ level: 'debug' });
-
-logger.error('Critical error occurred');
-logger.warn('Warning message');
-logger.info('Information');
-logger.debug('Debug details');
-logger.trace('Trace information');
-```
-
-**Features**:
-- Colored output
-- Timestamps
-- Configurable levels
-- Consistent formatting
-
-### TypeBox Schemas
-Type-safe configuration (Planned).
-
-**Status**: 🚧 Coming in Phase 3
-
-## Additional Features
-
-### Multi-Agent Routing
-Route channels to isolated agents (Planned).
-
-**Purpose**:
-- Handle multiple conversations independently
-- Isolate different use cases
-- Scale horizontally
-
-**Status**: 🚧 Coming in Phase 3
-
-### Presence Indicators
-Show online/typing status (Planned).
-
-**Status**: 🚧 Coming in Phase 3
-
-### Usage Tracking
-Monitor API usage and costs.
-
-**Tracks**:
-- Total API requests
-- Token consumption
-- Costs by model
-- Usage by date
-
-**Usage**:
-```javascript
-import UsageTracker from './src/usage-tracker.js';
-
+const logger = new Logger();
+const health = new HealthCheck();
 const tracker = new UsageTracker();
 
-// Track an API call
-tracker.track('gpt-4o-mini', 150, 0.0002);
+// New
+import Monitor from './monitor.js';
 
-// Get summary
-const summary = tracker.getSummary();
-console.log(`Total cost: $${summary.total.cost.toFixed(4)}`);
+const monitor = new Monitor();
+// monitor has logger, health, and tracker methods
 ```
 
-### Streaming/Chunking
-Real-time response delivery (Planned).
-
-**Purpose**:
-- Stream responses as they're generated
-- Reduce perceived latency
-- Improve user experience
-
-**Status**: 🚧 Coming in Phase 3
-
-### Retry Policy
-Automatic retry on failures with exponential backoff.
-
-**Configuration**:
+**SkillsManager → SkillsEngine**
 ```javascript
-import RetryPolicy from './src/retry-policy.js';
+// Old
+import SkillsManager from './skills-manager.js';
+const skills = new SkillsManager();
 
-const retry = new RetryPolicy({
-  maxAttempts: 3,
-  initialDelay: 1000,
-  maxDelay: 10000,
-  backoffFactor: 2
-});
-
-// Execute with retry
-const result = await retry.execute(async () => {
-  // Your API call or operation
-  return await someAPICall();
-}, 'API call');
+// New
+import SkillsEngine from './skills-engine.js';
+const skills = new SkillsEngine();
+// API is mostly compatible
 ```
 
-**Features**:
-- Configurable attempts
-- Exponential backoff
-- Maximum delay cap
-- Context logging
-
-### Session Pruning
-Automatic context management.
-
-**Purpose**:
-- Prevent context overflow
-- Manage token limits
-- Optimize performance
-
-**Features**:
-- Automatic pruning when threshold reached
-- Keeps system messages
-- Removes oldest non-critical messages
-- Tracks session statistics
-
-**Usage**:
+**Direct OpenAI → LLM**
 ```javascript
-import SessionManager from './src/session-manager.js';
+// Old
+import OpenAI from 'openai';
+const openai = new OpenAI();
 
-const sessions = new SessionManager({
-  maxContextLength: 10000,
-  pruneThreshold: 0.8,
-  prunePercent: 0.3
-});
-
-// Add message to session
-sessions.addMessage('session-123', {
-  role: 'user',
-  content: 'Hello!'
-}, 50);
-
-// Session automatically prunes when needed
+// New
+import LLM from './llm.js';
+const llm = new LLM();
+await llm.initialize();
+const result = await llm.complete({ messages });
 ```
 
-**Statistics**:
-- Track total sessions
-- Monitor message counts
-- View token usage per session
-- Automatic cleanup of old sessions
+## Feature Status
 
----
+- ✅ **Production Ready** - Fully tested and documented
+- 🚧 **Beta** - Functional but may change
+- ⏳ **Planned** - In roadmap
 
-## Feature Status Legend
+### Current Status
 
-- ✅ **Implemented** - Feature is complete and working
-- 🚧 **Planned** - Feature is planned for future releases
-- ⏳ **In Progress** - Feature is currently being developed
+- ✅ Monitor (consolidated logging, health, usage)
+- ✅ Skills Engine (auto-discovery)
+- ✅ Multi-Provider LLM
+- ✅ Self-Improvement Loop
+- ✅ Enhanced Memory Search
+- ✅ Webhook Support
+- 🚧 Semantic Search (basic implementation)
+- ⏳ Hot Reload
+- ⏳ Docker Sandbox
+- ⏳ Streaming Responses
 
 ## Support
 
-For questions or issues with any of these features, please:
-1. Run `npm run doctor` to diagnose issues
-2. Check the documentation in this file
-3. Open an issue on GitHub
+For questions or issues:
+1. Run `npm run doctor` to diagnose
+2. Check [skills/README.md](skills/README.md) for skills documentation
+3. Review `config/models.json` for LLM configuration
+4. Open an issue on GitHub
