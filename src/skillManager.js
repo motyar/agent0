@@ -15,6 +15,17 @@ class SkillManager {
    */
   async installSkill(ownerRepo) {
     try {
+      // Validate ownerRepo format to prevent command injection
+      if (!ownerRepo || typeof ownerRepo !== 'string') {
+        throw new Error('Invalid ownerRepo: must be a string');
+      }
+      
+      // Validate format: owner/repo (alphanumeric, hyphens, underscores)
+      const validPattern = /^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/;
+      if (!validPattern.test(ownerRepo)) {
+        throw new Error('Invalid ownerRepo format: must be "owner/repo" with alphanumeric characters, hyphens, or underscores only');
+      }
+      
       console.log(`📦 Installing skill: ${ownerRepo}...`);
       
       // Use npx skills CLI or direct GitHub fetch
@@ -128,7 +139,6 @@ class SkillManager {
     try {
       // Search for the skill in managed and workspace directories
       const subdirs = ['managed', 'workspace'];
-      let found = false;
       
       for (const subdir of subdirs) {
         const skillPath = path.join(this.skillsDir, subdir, skillName);
@@ -137,7 +147,6 @@ class SkillManager {
           await fs.access(skillPath);
           await fs.unlink(skillPath);
           console.log(`✓ Removed skill: ${skillName} from ${subdir}`);
-          found = true;
           return true;
         } catch (error) {
           // Skill not in this directory, try next
@@ -145,11 +154,9 @@ class SkillManager {
         }
       }
       
-      if (!found) {
-        throw new Error(`Skill ${skillName} not found`);
-      }
+      // If we get here, skill was not found in any directory
+      throw new Error(`Skill ${skillName} not found`);
       
-      return false;
     } catch (error) {
       console.error(`Failed to remove skill ${skillName}:`, error.message);
       return false;

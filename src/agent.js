@@ -87,7 +87,7 @@ class Agent0 {
 
   async think(message, conversationContext) {
     const skillsSection = this.skillsContext 
-      ? `\n**AVAILABLE SKILLS FROM SKILLS.SH:**\n${this.skillsContext}\n\nYou can use these skills to enhance your responses and capabilities.\n` 
+      ? `\n**AVAILABLE SKILLS FROM Skills.sh:**\n${this.skillsContext}\n\nYou can use these skills to enhance your responses and capabilities.\n` 
       : '';
     
     const prompt = `You are Agent0, an autonomous AI agent running on GitHub Actions.
@@ -349,13 +349,22 @@ You can track progress at: ${result.pr_url}`;
     try {
       const args = message.text.split(' ');
       if (args.length < 2) {
-        const response = 'Usage: /skill_add owner/repo\n\nExample: /skill_add vercel/code-review';
+        const response = 'Usage: /skill_add owner/repo\n\nExample: /skill_add username/my-skill\n\nBrowse available skills at https://skills.sh';
         await this.telegram.sendMessage(message.chat_id, response);
         await this.memory.remember(message.user_id, message.text, response);
         return;
       }
       
       const skillRepo = args[1];
+      
+      // Validate format before processing (basic check)
+      const validPattern = /^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/;
+      if (!validPattern.test(skillRepo)) {
+        const response = '❌ Invalid repository format. Use: owner/repo\n\nExample: /skill_add username/my-skill';
+        await this.telegram.sendMessage(message.chat_id, response);
+        await this.memory.remember(message.user_id, message.text, response);
+        return;
+      }
       
       await this.telegram.sendMessage(message.chat_id, `📦 Installing skill: ${skillRepo}...`);
       
@@ -367,7 +376,7 @@ You can track progress at: ${result.pr_url}`;
         this.skillsContext = await this.skillManager.getSkillsContext();
         response = `✅ Skill ${skillRepo} installed successfully!\n\nThe skill is now available and has been loaded into my context.`;
       } else {
-        response = `❌ Failed to install skill. Check logs for details.`;
+        response = `❌ Failed to install skill. The repository may not exist or the skill format is invalid.`;
       }
       
       await this.telegram.sendMessage(message.chat_id, response);
@@ -457,14 +466,14 @@ You can track progress at: ${result.pr_url}`;
 /skills_help - Show this help message
 
 **Examples:**
-\`/skill_add vercel/code-review\`
+\`/skill_add username/my-skill\`
 \`/skill_list\`
-\`/skill_remove code-review.md\`
+\`/skill_remove my-skill.md\`
 
 **About Skills.sh:**
 Skills.sh is an open directory for AI agent skills - modular packages that extend agent capabilities. Skills are packaged as SKILL.md files with instructions and best practices.
 
-Learn more at https://skills.sh`;
+Browse available skills and learn more at https://skills.sh`;
       
       await this.telegram.sendMessage(message.chat_id, response);
       await this.memory.remember(message.user_id, message.text, response);
