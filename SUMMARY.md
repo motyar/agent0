@@ -210,7 +210,6 @@ New features are opt-in and don't affect existing workflows.
 ### Phase 4 (Future)
 - Web search integration
 - Advanced tool execution
-- Self-improvement loop
 - Code generation capabilities
 
 ## Success Metrics

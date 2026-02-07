@@ -341,7 +341,6 @@ Scheduled task execution using standard cron syntax.
 **Built-in Task Types**:
 - `self_analysis` - Analyze agent performance and identify improvements
 - `memory_cleanup` - Clean up old conversation history
-- `health_check` - Run system health diagnostics
 - `custom` - Execute custom task handlers
 
 ### Wakeup Tasks
@@ -377,7 +376,6 @@ Real-time event processing via GitHub repository dispatch.
 
 **Trigger Events:**
 - telegram-message - Process messages in real-time
-- health-check - Run diagnostics
 - custom - Handle custom events
 
 **Example Trigger:**
@@ -441,7 +439,6 @@ const result = await llm.complete({ messages });
 ## Support
 
 For questions or issues:
-1. Run `npm run doctor` to diagnose
-2. Check [skills/README.md](skills/README.md) for skills documentation
-3. Review `config/models.json` for LLM configuration
-4. Open an issue on GitHub
+1. Check [skills/README.md](skills/README.md) for skills documentation
+2. Review `config/models.json` for LLM configuration
+3. Open an issue on GitHub
