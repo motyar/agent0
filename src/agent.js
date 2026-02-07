@@ -546,4 +546,6 @@ if (command === 'process') {
   process.exit(1);
 }
 
+// Export the class and the processPR function for module use
 export default Agent0;
+export { Agent0 };
