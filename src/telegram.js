@@ -13,6 +13,20 @@ class TelegramService {
     this.queuePath = 'queue/incoming.json';
   }
 
+  /**
+   * Escape special characters for Telegram Markdown parsing
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped text safe for Markdown
+   */
+  escapeMarkdown(text) {
+    if (typeof text !== 'string') {
+      return String(text);
+    }
+    // Escape special Markdown characters
+    // Characters that need escaping: _ * [ ] ( ) ~ ` > # + - = | { } . !
+    return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+  }
+
   async api(method, body = {}) {
     const url = `https://api.telegram.org/bot${this.token}/${method}`;
     const res = await fetch(url, {

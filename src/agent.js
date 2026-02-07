@@ -267,9 +267,9 @@ Example: "Create a PR to add a health check endpoint that returns server status"
 
 I've created a pull request for your task:
 
-**Task:** ${taskInfo.taskDescription}
-**PR:** [#${result.pr_number}](${result.pr_url})
-**Branch:** \`${result.branch}\`
+**Task:** ${this.telegram.escapeMarkdown(taskInfo.taskDescription)}
+**PR:** [#${result.pr_number}](${this.telegram.escapeMarkdown(result.pr_url)})
+**Branch:** \`${this.telegram.escapeMarkdown(result.branch)}\`
 
 The PR is now ready for GitHub Copilot agents to work on. They will implement the task and push changes to the branch.
 
@@ -324,7 +324,7 @@ You can track progress at: ${result.pr_url}`;
         return;
       }
       
-      await this.telegram.sendMessage(message.chat_id, `📦 Installing skill: ${skillRepo}...`);
+      await this.telegram.sendMessage(message.chat_id, `📦 Installing skill: ${this.telegram.escapeMarkdown(skillRepo)}...`);
       
       const success = await this.skillManager.installSkill(skillRepo);
       
@@ -332,7 +332,7 @@ You can track progress at: ${result.pr_url}`;
       if (success) {
         // Reload skills context
         this.skillsContext = await this.skillManager.getSkillsContext();
-        response = `✅ Skill ${skillRepo} installed successfully!\n\nThe skill is now available and has been loaded into my context.`;
+        response = `✅ Skill ${this.telegram.escapeMarkdown(skillRepo)} installed successfully!\n\nThe skill is now available and has been loaded into my context.`;
       } else {
         response = `❌ Failed to install skill. The repository may not exist or the skill format is invalid.`;
       }
@@ -357,10 +357,10 @@ You can track progress at: ${result.pr_url}`;
       
       let response;
       if (skills.length === 0) {
-        response = 'No Skills.sh skills installed yet.\n\nUse /skill_add to install skills from Skills.sh.\n\nExample: /skill_add vercel/code-review';
+        response = `No ${this.telegram.escapeMarkdown('Skills.sh')} skills installed yet.\n\nUse /skill_add to install skills from ${this.telegram.escapeMarkdown('Skills.sh')}.\n\nExample: /skill_add vercel/code-review`;
       } else {
-        const list = skills.map(s => `• ${s.name} (${s.type})`).join('\n');
-        response = `📚 **Installed Skills.sh Skills:**\n\n${list}\n\nTotal: ${skills.length} skill(s)`;
+        const list = skills.map(s => `• ${this.telegram.escapeMarkdown(s.name)} (${this.telegram.escapeMarkdown(s.type)})`).join('\n');
+        response = `📚 **Installed ${this.telegram.escapeMarkdown('Skills.sh')} Skills:**\n\n${list}\n\nTotal: ${skills.length} skill(s)`;
       }
       
       await this.telegram.sendMessage(message.chat_id, response);
@@ -395,7 +395,7 @@ You can track progress at: ${result.pr_url}`;
       if (success) {
         // Reload skills context
         this.skillsContext = await this.skillManager.getSkillsContext();
-        response = `✅ Skill ${skillName} removed successfully!`;
+        response = `✅ Skill ${this.telegram.escapeMarkdown(skillName)} removed successfully!`;
       } else {
         response = `❌ Failed to remove skill.`;
       }
@@ -416,9 +416,9 @@ You can track progress at: ${result.pr_url}`;
    */
   async handleSkillsHelp(message) {
     try {
-      const response = `📚 **Skills.sh Management Commands**
+      const response = `📚 **${this.telegram.escapeMarkdown('Skills.sh')} Management Commands**
 
-/skill_add owner/repo - Install a skill from Skills.sh
+/skill_add owner/repo - Install a skill from ${this.telegram.escapeMarkdown('Skills.sh')}
 /skill_list - List all installed skills
 /skill_remove name.md - Remove an installed skill
 /skills_help - Show this help message
@@ -428,8 +428,8 @@ You can track progress at: ${result.pr_url}`;
 \`/skill_list\`
 \`/skill_remove my-skill.md\`
 
-**About Skills.sh:**
-Skills.sh is an open directory for AI agent skills - modular packages that extend agent capabilities. Skills are packaged as SKILL.md files with instructions and best practices.
+**About ${this.telegram.escapeMarkdown('Skills.sh')}:**
+${this.telegram.escapeMarkdown('Skills.sh')} is an open directory for AI agent skills - modular packages that extend agent capabilities. Skills are packaged as SKILL.md files with instructions and best practices.
 
 Browse available skills and learn more at https://skills.sh`;
       
