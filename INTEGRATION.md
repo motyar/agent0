@@ -1,6 +1,6 @@
 # Integration Examples
 
-This document provides examples of how to use the new features together.
+This document provides examples of how to use Agent0 features together.
 
 ## Example 1: Using the Skills Platform
 
@@ -21,55 +21,7 @@ const result = await agent.skills.executeSkill('conversation', {
 });
 ```
 
-## Example 2: Monitoring Health and Usage
-
-```javascript
-import Agent0 from './src/agent.js';
-
-const agent = new Agent0();
-await agent.initialize();
-
-// Run health checks
-const health = await agent.healthCheck.runAll();
-console.log('Health status:', health);
-
-// Get usage statistics
-const usage = agent.usageTracker.getSummary();
-console.log('API Usage:', usage);
-
-// Get comprehensive statistics
-const stats = await agent.getStatistics();
-console.log('Full statistics:', stats);
-```
-
-## Example 3: Session Management
-
-```javascript
-import SessionManager from './src/session-manager.js';
-
-const sessions = new SessionManager({
-  maxContextLength: 10000,
-  pruneThreshold: 0.8
-});
-
-// Add messages to session
-sessions.addMessage('user-123', {
-  role: 'user',
-  content: 'Hello, Agent0!'
-}, 50);
-
-sessions.addMessage('user-123', {
-  role: 'assistant',
-  content: 'Hello! How can I help you?'
-}, 70);
-
-// Get context
-const context = sessions.getContext('user-123');
-
-// Sessions auto-prune when threshold is reached
-```
-
-## Example 4: Scheduled Tasks
+## Example 2: Scheduled Tasks
 
 Edit `config/scheduler.json`:
 
@@ -95,46 +47,7 @@ Edit `config/scheduler.json`:
 
 The scheduler will automatically run these tasks.
 
-## Example 5: Using Retry Policy
-
-```javascript
-import RetryPolicy from './src/retry-policy.js';
-
-const retry = new RetryPolicy({
-  maxAttempts: 3,
-  initialDelay: 1000,
-  backoffFactor: 2
-});
-
-// Wrap any operation that might fail
-const result = await retry.execute(async () => {
-  // Your operation here
-  const response = await fetch('https://api.example.com/data');
-  return await response.json();
-}, 'API fetch');
-```
-
-## Example 6: Comprehensive Logging
-
-```javascript
-import Logger from './src/logger.js';
-
-const logger = new Logger({
-  level: 'debug',
-  enableColors: true,
-  enableTimestamp: true
-});
-
-logger.info('Application started');
-logger.debug('Debug information');
-logger.warn('Warning message');
-logger.error('Error occurred');
-
-// Change log level at runtime
-logger.setLevel('trace');
-```
-
-## Example 7: Custom Skill Creation
+## Example 3: Custom Skill Creation
 
 Create `skills/workspace/greeting.js`:
 
@@ -174,20 +87,7 @@ const result = await agent.skills.executeSkill('greeting', {
 console.log(result.greeting); // "Good morning, Alice!"
 ```
 
-## Example 8: Running Diagnostics
-
-```bash
-# Run full diagnostics
-npm run doctor
-
-# Attempt to fix issues
-npm run fix
-
-# View statistics
-npm run stats
-```
-
-## Example 9: Complete Workflow
+## Example 4: Complete Workflow
 
 ```javascript
 import Agent0 from './src/agent.js';
@@ -199,25 +99,16 @@ async function main() {
     // Initialize all subsystems
     await agent.initialize();
     
-    // Run health checks
-    const health = await agent.healthCheck.runAll();
-    if (health.unhealthy > 0) {
-      agent.logger.warn(`${health.unhealthy} health checks failed`);
-    }
-    
     // Process messages
     await agent.process();
     
-    // Get statistics
-    const stats = await agent.getStatistics();
-    agent.logger.info(`Processed ${stats.agent.stats.total_messages_processed} messages`);
-    agent.logger.info(`Total API cost: $${stats.usage.total.cost.toFixed(4)}`);
+    console.log('Processing complete');
     
     // Cleanup
     await agent.shutdown();
     
   } catch (error) {
-    agent.logger.error('Fatal error:', error);
+    console.error('Fatal error:', error);
     process.exit(1);
   }
 }

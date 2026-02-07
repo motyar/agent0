@@ -8,9 +8,6 @@ import MemoryEngine from './memory-engine.js';
 import Scheduler from './scheduler.js';
 import SkillsManager from './skills-manager.js';
 import SkillManager from './skillManager.js';
-import RetryPolicy from './retry-policy.js';
-import Monitor from './monitor.js';
-import SessionManager from './session-manager.js';
 import GitHubService from './github-service.js';
 import TaskParser from './task-parser.js';
 
@@ -25,9 +22,6 @@ class Agent0 {
     this.scheduler = new Scheduler();
     this.skills = new SkillsManager();
     this.skillManager = new SkillManager('./skills');
-    this.retryPolicy = new RetryPolicy();
-    this.monitor = new Monitor({ level: 'info' });
-    this.sessionManager = new SessionManager();
     this.github = new GitHubService();
     this.taskParser = new TaskParser();
 
@@ -37,7 +31,7 @@ class Agent0 {
   }
 
   async initialize() {
-    this.monitor.info('Agent0 initializing...');
+    console.log('Agent0 initializing...');
 
     // Load identity
     const identityData = await fs.readFile('agents/primary/identity.json', 'utf-8');
@@ -53,37 +47,16 @@ class Agent0 {
     // Initialize Skills.sh integration
     await this.skillManager.ensureDirectories();
     this.skillsContext = await this.skillManager.getSkillsContext();
-    
-    this.registerHealthChecks();
 
-    this.monitor.info(`Agent0 v${this.identity.version} ready`);
-    this.monitor.info(`Soul loaded (${this.soul.length} characters)`);
+    console.log(`Agent0 v${this.identity.version} ready`);
+    console.log(`Soul loaded (${this.soul.length} characters)`);
     
     if (this.skillsContext) {
-      this.monitor.info(`Skills.sh integration loaded (${this.skillsContext.length} characters)`);
+      console.log(`Skills.sh integration loaded (${this.skillsContext.length} characters)`);
     }
   }
 
-  /**
-   * Register health checks
-   */
-  registerHealthChecks() {
-    this.monitor.register('system', async () => {
-      return {
-        status: 'healthy',
-        uptime: process.uptime(),
-        memory: process.memoryUsage()
-      };
-    }, { interval: 60000 });
 
-    this.monitor.register('api', async () => {
-      // Check if API key is available
-      if (!process.env.OPENAI_API_KEY) {
-        throw new Error('OPENAI_API_KEY not configured');
-      }
-      return { status: 'healthy' };
-    }, { interval: 60000, critical: true });
-  }
 
   async think(message, conversationContext) {
     // Build skills section if skills are loaded
@@ -113,50 +86,27 @@ User: ${message.text}
 
 Respond now:`;
 
-    this.monitor.info('Thinking...');
+    console.log('Thinking...');
 
     // Ensure we have model and max_tokens in identity
     const modelName = (this.identity && this.identity.model && this.identity.model.name) || 'gpt-4o-mini';
     const maxTokens = (this.identity && this.identity.model && this.identity.model.max_tokens) || 512;
 
-    // Use retry policy for API calls
-    const response = await this.retryPolicy.execute(async () => {
-      return await this.openai.chat.completions.create({
-        model: modelName,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: maxTokens
-      });
-    }, 'OpenAI API call');
+    // Make direct API call
+    const response = await this.openai.chat.completions.create({
+      model: modelName,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: maxTokens
+    });
 
     const responseText = response.choices[0].message.content;
 
-    // Track usage
-    const tokensUsed = response.usage?.total_tokens || 0;
-    const estimatedCost = this.estimateCost(modelName, tokensUsed);
-    this.monitor.track(modelName, tokensUsed, estimatedCost);
-
-    this.monitor.info(`Generated response (${responseText.length} chars, ${tokensUsed} tokens)`);
+    console.log(`Generated response (${responseText.length} chars, ${response.usage?.total_tokens || 0} tokens)`);
 
     return responseText;
   }
 
-  /**
-   * Estimate API cost based on model and tokens
-   * Last updated: 2026-02-07
-   * Pricing source: https://openai.com/api/pricing/
-   */
-  estimateCost(model, tokens) {
-    // Cost estimates per 1k tokens (input + output averaged)
-    const costPer1kTokens = {
-      'gpt-4o-mini': 0.00015,
-      'gpt-4o': 0.005,
-      'gpt-4': 0.03,
-      'gpt-3.5-turbo': 0.0015
-    };
 
-    const rate = costPer1kTokens[model] || 0.0015;
-    return (tokens / 1000) * rate;
-  }
 
   async process() {
     try {
@@ -543,23 +493,7 @@ Browse available skills and learn more at https://skills.sh`;
     }
   }
 
-  /**
-   * Get comprehensive statistics
-   */
-  async getStatistics() {
-    return {
-      agent: {
-        version: this.identity.version,
-        uptime: process.uptime(),
-        stats: this.identity.stats
-      },
-      usage: this.monitor.getSummary(),
-      skills: this.skills.getStatistics(),
-      sessions: this.sessionManager.getStats(),
-      scheduler: this.scheduler.getStatus(),
-      health: this.monitor.getLastResults()
-    };
-  }
+
 
   /**
    * Process a PR by fetching task details and implementing the task
@@ -688,15 +622,12 @@ IMPORTANT: All file paths must be relative to the repository root and must not c
    * Cleanup and shutdown
    */
   async shutdown() {
-    this.monitor.info('Shutting down Agent0...');
+    console.log('Shutting down Agent0...');
     
     // Stop scheduler
     this.scheduler.stop();
     
-    // Cleanup old sessions
-    this.sessionManager.cleanupOldSessions();
-    
-    this.monitor.info('Shutdown complete');
+    console.log('Shutdown complete');
   }
 }
 
@@ -729,19 +660,8 @@ if (command === 'process') {
       console.error('❌ Error processing PR:', error);
       process.exit(1);
     });
-} else if (command === 'stats') {
-  const agent = new Agent0();
-  agent.initialize().then(async () => {
-    const stats = await agent.getStatistics();
-    console.log('\n📊 Agent0 Statistics:');
-    console.log(JSON.stringify(stats, null, 2));
-    await agent.shutdown();
-  }).catch(err => {
-    console.error('Fatal error:', err);
-    process.exit(1);
-  });
 } else {
-  console.log('Usage: node agent.js [process|process-pr <pr-number>|stats]');
+  console.log('Usage: node agent.js [process|process-pr <pr-number>]');
   process.exit(1);
 }
 
