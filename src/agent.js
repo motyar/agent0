@@ -8,10 +8,8 @@ import MemoryEngine from './memory-engine.js';
 import Scheduler from './scheduler.js';
 import SkillsManager from './skills-manager.js';
 import RetryPolicy from './retry-policy.js';
-import HealthCheck from './health-check.js';
-import UsageTracker from './usage-tracker.js';
+import Monitor from './monitor.js';
 import SessionManager from './session-manager.js';
-import Logger from './logger.js';
 import GitHubService from './github-service.js';
 import TaskParser from './task-parser.js';
 
@@ -26,10 +24,8 @@ class Agent0 {
     this.scheduler = new Scheduler();
     this.skills = new SkillsManager();
     this.retryPolicy = new RetryPolicy();
-    this.healthCheck = new HealthCheck();
-    this.usageTracker = new UsageTracker();
+    this.monitor = new Monitor({ level: 'info' });
     this.sessionManager = new SessionManager();
-    this.logger = new Logger({ level: 'info' });
     this.github = new GitHubService();
     this.taskParser = new TaskParser();
 
@@ -38,7 +34,7 @@ class Agent0 {
   }
 
   async initialize() {
-    this.logger.info('Agent0 initializing...');
+    this.monitor.info('Agent0 initializing...');
 
     // Load identity
     const identityData = await fs.readFile('agents/primary/identity.json', 'utf-8');
@@ -52,15 +48,15 @@ class Agent0 {
     await this.skills.initialize();
     this.registerHealthChecks();
 
-    this.logger.info(`Agent0 v${this.identity.version} ready`);
-    this.logger.info(`Soul loaded (${this.soul.length} characters)`);
+    this.monitor.info(`Agent0 v${this.identity.version} ready`);
+    this.monitor.info(`Soul loaded (${this.soul.length} characters)`);
   }
 
   /**
    * Register health checks
    */
   registerHealthChecks() {
-    this.healthCheck.register('system', async () => {
+    this.monitor.register('system', async () => {
       return {
         status: 'healthy',
         uptime: process.uptime(),
@@ -68,7 +64,7 @@ class Agent0 {
       };
     }, { interval: 60000 });
 
-    this.healthCheck.register('api', async () => {
+    this.monitor.register('api', async () => {
       // Check if API key is available
       if (!process.env.OPENAI_API_KEY) {
         throw new Error('OPENAI_API_KEY not configured');
@@ -98,7 +94,7 @@ User: ${message.text}
 
 Respond now:`;
 
-    this.logger.info('Thinking...');
+    this.monitor.info('Thinking...');
 
     // Ensure we have model and max_tokens in identity
     const modelName = (this.identity && this.identity.model && this.identity.model.name) || 'gpt-4o-mini';
@@ -118,9 +114,9 @@ Respond now:`;
     // Track usage
     const tokensUsed = response.usage?.total_tokens || 0;
     const estimatedCost = this.estimateCost(modelName, tokensUsed);
-    this.usageTracker.track(modelName, tokensUsed, estimatedCost);
+    this.monitor.track(modelName, tokensUsed, estimatedCost);
 
-    this.logger.info(`Generated response (${responseText.length} chars, ${tokensUsed} tokens)`);
+    this.monitor.info(`Generated response (${responseText.length} chars, ${tokensUsed} tokens)`);
 
     return responseText;
   }
@@ -373,11 +369,11 @@ You can track progress at: ${result.pr_url}`;
         uptime: process.uptime(),
         stats: this.identity.stats
       },
-      usage: this.usageTracker.getSummary(),
+      usage: this.monitor.getSummary(),
       skills: this.skills.getStatistics(),
       sessions: this.sessionManager.getStats(),
       scheduler: this.scheduler.getStatus(),
-      health: this.healthCheck.getLastResults()
+      health: this.monitor.getLastResults()
     };
   }
 
@@ -508,7 +504,7 @@ IMPORTANT: All file paths must be relative to the repository root and must not c
    * Cleanup and shutdown
    */
   async shutdown() {
-    this.logger.info('Shutting down Agent0...');
+    this.monitor.info('Shutting down Agent0...');
     
     // Stop scheduler
     this.scheduler.stop();
@@ -516,7 +512,7 @@ IMPORTANT: All file paths must be relative to the repository root and must not c
     // Cleanup old sessions
     this.sessionManager.cleanupOldSessions();
     
-    this.logger.info('Shutdown complete');
+    this.monitor.info('Shutdown complete');
   }
 }
 
