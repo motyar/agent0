@@ -1,15 +1,15 @@
 {
-  "last_update_id": 517942717,
-  "last_poll": "2026-02-07T09:45:40.003Z",
+  "last_update_id": 517942718,
+  "last_poll": "2026-02-07T09:53:42.331Z",
   "messages": [
     {
-      "update_id": 517942717,
-      "message_id": 2596,
+      "update_id": 517942718,
+      "message_id": 2597,
       "user_id": 3181434,
       "username": "motyar",
       "first_name": "Motyar",
       "text": "Create a PR to test schedules",
-      "timestamp": "2026-02-07T09:45:35.000Z",
+      "timestamp": "2026-02-07T09:53:19.000Z",
       "chat_id": 3181434,
       "status": "failed",
       "error": "Telegram API error: Bad Request: can't parse entities: Can't find end of the entity starting at byte offset 245"
