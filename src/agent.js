@@ -2,6 +2,7 @@
 
 import OpenAI from 'openai';
 import fs from 'fs/promises';
+import path from 'path';
 import TelegramService from './telegram.js';
 import MemoryEngine from './memory-engine.js';
 import Scheduler from './scheduler.js';
@@ -387,7 +388,6 @@ You can track progress at: ${result.pr_url}`;
     try {
       // Dynamic import for Octokit since we're in ES module
       const { Octokit } = await import('@octokit/rest');
-      const path = await import('path');
       
       const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
       const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
@@ -439,7 +439,9 @@ Respond in JSON format:
       "content": "file content"
     }
   ]
-}`
+}
+
+IMPORTANT: All file paths must be relative to the repository root and must not contain path traversal sequences (../).`
             },
             {
               role: 'user',
@@ -456,16 +458,33 @@ Respond in JSON format:
         throw new Error('Invalid response from OpenAI API');
       }
       
-      const implementation = JSON.parse(result.choices[0].message.content);
+      let implementation;
+      try {
+        implementation = JSON.parse(result.choices[0].message.content);
+      } catch (parseError) {
+        throw new Error('Failed to parse AI response as JSON. Response may be malformed.');
+      }
       
       console.log(`💡 Analysis: ${implementation.analysis}`);
       console.log(`📝 Will process ${implementation.files.length} file(s)`);
       
+      // Get repository root path
+      const repoRoot = process.cwd();
+      
       // Implement the changes
       for (const file of implementation.files) {
+        // Validate file path to prevent path traversal attacks
+        const filePath = path.join(repoRoot, file.path);
+        const resolvedPath = path.resolve(filePath);
+        
+        // Ensure the resolved path is within the repository root
+        if (!resolvedPath.startsWith(repoRoot)) {
+          console.error(`⚠️ Skipping ${file.path}: Path traversal detected`);
+          continue;
+        }
+        
         console.log(`${file.action === 'create' ? '➕' : '✏️'} ${file.path}`);
         
-        const filePath = path.join(process.cwd(), file.path);
         const dir = path.dirname(filePath);
         
         // Ensure directory exists
@@ -546,6 +565,4 @@ if (command === 'process') {
   process.exit(1);
 }
 
-// Export the class and the processPR function for module use
 export default Agent0;
-export { Agent0 };

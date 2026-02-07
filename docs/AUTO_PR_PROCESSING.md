@@ -315,8 +315,8 @@ Potential improvements:
 
 ## Related Documentation
 
-- [GitHub Service](../src/github-service.js) - PR creation logic
-- [Task Parser](../src/task-parser.js) - Task extraction
+- [GitHub Service](../src/github-service.js) - PR creation logic (already exists)
+- [Task Parser](../src/task-parser.js) - Task extraction (already exists)
 - [Agent Core](../src/agent.js) - Main agent logic
 - [Process Messages Workflow](../.github/workflows/process-messages.yml) - Bot message handling
 
