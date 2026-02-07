@@ -1,0 +1,53 @@
+{
+  "cron_jobs": [
+    {
+      "id": "self_analysis",
+      "schedule": "0 0 * * *",
+      "enabled": true,
+      "task": {
+        "type": "self_analysis",
+        "params": {
+          "depth": "full"
+        }
+      },
+      "description": "Daily self-analysis at midnight UTC"
+    },
+    {
+      "id": "memory_cleanup",
+      "schedule": "0 2 * * 0",
+      "enabled": true,
+      "task": {
+        "type": "memory_cleanup",
+        "params": {
+          "max_age_days": 90
+        }
+      },
+      "description": "Weekly memory cleanup on Sundays at 2 AM UTC"
+    },
+    {
+      "id": "health_check",
+      "schedule": "*/15 * * * *",
+      "enabled": true,
+      "task": {
+        "type": "health_check",
+        "params": {}
+      },
+      "description": "Health check every 15 minutes"
+    }
+  ],
+  "wakeup_tasks": [
+    {
+      "id": "morning_wakeup",
+      "trigger_time": "2026-02-08T06:00:00.000Z",
+      "enabled": false,
+      "task": {
+        "type": "custom",
+        "handler": "morning_routine",
+        "params": {
+          "greeting": "Good morning!"
+        }
+      },
+      "description": "Morning wakeup routine"
+    }
+  ]
+}

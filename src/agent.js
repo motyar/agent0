@@ -4,6 +4,13 @@ import OpenAI from 'openai';
 import fs from 'fs/promises';
 import TelegramService from './telegram.js';
 import MemoryEngine from './memory-engine.js';
+import Scheduler from './scheduler.js';
+import SkillsManager from './skills-manager.js';
+import RetryPolicy from './retry-policy.js';
+import HealthCheck from './health-check.js';
+import UsageTracker from './usage-tracker.js';
+import SessionManager from './session-manager.js';
+import Logger from './logger.js';
 
 class Agent0 {
   constructor() {
@@ -13,13 +20,20 @@ class Agent0 {
 
     this.telegram = new TelegramService();
     this.memory = new MemoryEngine();
+    this.scheduler = new Scheduler();
+    this.skills = new SkillsManager();
+    this.retryPolicy = new RetryPolicy();
+    this.healthCheck = new HealthCheck();
+    this.usageTracker = new UsageTracker();
+    this.sessionManager = new SessionManager();
+    this.logger = new Logger({ level: 'info' });
 
     this.identity = null;
     this.soul = null;
   }
 
   async initialize() {
-    console.log('🤖 Agent0 initializing...');
+    this.logger.info('Agent0 initializing...');
 
     // Load identity
     const identityData = await fs.readFile('agents/primary/identity.json', 'utf-8');
@@ -28,8 +42,34 @@ class Agent0 {
     // Load soul
     this.soul = await fs.readFile('agents/primary/soul.md', 'utf-8');
 
-    console.log(`✅ Agent0 v${this.identity.version} ready`);
-    console.log(`📖 Soul loaded (${this.soul.length} characters)`);
+    // Initialize subsystems
+    await this.scheduler.initialize();
+    await this.skills.initialize();
+    this.registerHealthChecks();
+
+    this.logger.info(`Agent0 v${this.identity.version} ready`);
+    this.logger.info(`Soul loaded (${this.soul.length} characters)`);
+  }
+
+  /**
+   * Register health checks
+   */
+  registerHealthChecks() {
+    this.healthCheck.register('system', async () => {
+      return {
+        status: 'healthy',
+        uptime: process.uptime(),
+        memory: process.memoryUsage()
+      };
+    }, { interval: 60000 });
+
+    this.healthCheck.register('api', async () => {
+      // Check if API key is available
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY not configured');
+      }
+      return { status: 'healthy' };
+    }, { interval: 60000, critical: true });
   }
 
   async think(message, conversationContext) {
@@ -53,24 +93,49 @@ User: ${message.text}
 
 Respond now:`;
 
-    console.log('🧠 Thinking...');
+    this.logger.info('Thinking...');
 
     // Ensure we have model and max_tokens in identity
     const modelName = (this.identity && this.identity.model && this.identity.model.name) || 'gpt-4o-mini';
     const maxTokens = (this.identity && this.identity.model && this.identity.model.max_tokens) || 512;
 
-    // Use OpenAI Chat Completions API
-    const response = await this.openai.chat.completions.create({
-      model: modelName,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: maxTokens
-    });
+    // Use retry policy for API calls
+    const response = await this.retryPolicy.execute(async () => {
+      return await this.openai.chat.completions.create({
+        model: modelName,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: maxTokens
+      });
+    }, 'OpenAI API call');
 
     const responseText = response.choices[0].message.content;
 
-    console.log(`💭 Generated response (${responseText.length} chars)`);
+    // Track usage
+    const tokensUsed = response.usage?.total_tokens || 0;
+    const estimatedCost = this.estimateCost(modelName, tokensUsed);
+    this.usageTracker.track(modelName, tokensUsed, estimatedCost);
+
+    this.logger.info(`Generated response (${responseText.length} chars, ${tokensUsed} tokens)`);
 
     return responseText;
+  }
+
+  /**
+   * Estimate API cost based on model and tokens
+   * Last updated: 2026-02-07
+   * Pricing source: https://openai.com/api/pricing/
+   */
+  estimateCost(model, tokens) {
+    // Cost estimates per 1k tokens (input + output averaged)
+    const costPer1kTokens = {
+      'gpt-4o-mini': 0.00015,
+      'gpt-4o': 0.005,
+      'gpt-4': 0.03,
+      'gpt-3.5-turbo': 0.0015
+    };
+
+    const rate = costPer1kTokens[model] || 0.0015;
+    return (tokens / 1000) * rate;
   }
 
   async process() {
@@ -220,6 +285,39 @@ Respond now:`;
       throw error;
     }
   }
+
+  /**
+   * Get comprehensive statistics
+   */
+  async getStatistics() {
+    return {
+      agent: {
+        version: this.identity.version,
+        uptime: process.uptime(),
+        stats: this.identity.stats
+      },
+      usage: this.usageTracker.getSummary(),
+      skills: this.skills.getStatistics(),
+      sessions: this.sessionManager.getStats(),
+      scheduler: this.scheduler.getStatus(),
+      health: this.healthCheck.getLastResults()
+    };
+  }
+
+  /**
+   * Cleanup and shutdown
+   */
+  async shutdown() {
+    this.logger.info('Shutting down Agent0...');
+    
+    // Stop scheduler
+    this.scheduler.stop();
+    
+    // Cleanup old sessions
+    this.sessionManager.cleanupOldSessions();
+    
+    this.logger.info('Shutdown complete');
+  }
 }
 
 // CLI
@@ -231,8 +329,19 @@ if (command === 'process') {
     console.error('Fatal error:', err);
     process.exit(1);
   });
+} else if (command === 'stats') {
+  const agent = new Agent0();
+  agent.initialize().then(async () => {
+    const stats = await agent.getStatistics();
+    console.log('\n📊 Agent0 Statistics:');
+    console.log(JSON.stringify(stats, null, 2));
+    await agent.shutdown();
+  }).catch(err => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+  });
 } else {
-  console.log('Usage: node agent.js process');
+  console.log('Usage: node agent.js [process|stats]');
   process.exit(1);
 }
 

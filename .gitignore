@@ -4,3 +4,18 @@ node_modules/
 .env
 .vscode/
 .idea/
+
+# Temporary files
+/tmp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# Docker files (when implemented)
+*.dockerfile
+docker-compose.yml
+
+# Managed skills can be version controlled or not
+# Uncomment to ignore:
+# skills/managed/
