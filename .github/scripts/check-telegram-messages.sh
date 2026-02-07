@@ -21,9 +21,23 @@ echo "📊 Last processed update_id: $LAST_UPDATE_ID"
 OFFSET=$((LAST_UPDATE_ID + 1))
 API_URL="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates"
 
-RESPONSE=$(curl -s -X POST "$API_URL" \
+RESPONSE=$(curl -s -f -X POST "$API_URL" \
   -H "Content-Type: application/json" \
-  -d "{\"offset\": $OFFSET, \"timeout\": 0, \"allowed_updates\": [\"message\"]}")
+  -d "{\"offset\": $OFFSET, \"timeout\": 0, \"allowed_updates\": [\"message\"]}" 2>&1)
+
+CURL_EXIT_CODE=$?
+
+# Check if curl failed (network error or HTTP error)
+if [ $CURL_EXIT_CODE -ne 0 ]; then
+  echo "❌ Network error: Failed to connect to Telegram API (exit code: $CURL_EXIT_CODE)"
+  exit 1
+fi
+
+# Check if response is empty
+if [ -z "$RESPONSE" ]; then
+  echo "❌ Empty response from Telegram API"
+  exit 1
+fi
 
 # Check if the API call was successful
 if ! echo "$RESPONSE" | jq -e '.ok == true' > /dev/null 2>&1; then

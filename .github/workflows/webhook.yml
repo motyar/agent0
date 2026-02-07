@@ -44,7 +44,6 @@ jobs:
           steps.check_messages.outputs.has_messages != 'true'
         run: |
           echo "✅ No new messages, skipping processing"
-          exit 0
       
       - name: Setup Node.js
         if: |
