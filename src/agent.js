@@ -3,15 +3,20 @@
 import OpenAI from 'openai';
 import fs from 'fs/promises';
 import path from 'path';
+import { Type } from '@sinclair/typebox';
 import TelegramService from './telegram.js';
 import MemoryEngine from './memory-engine.js';
 import Scheduler from './scheduler.js';
 import SkillsManager from './skills-manager.js';
 import SkillManager from './skillManager.js';
 import GitHubService from './github-service.js';
+import AgentRouter from './agent-router.js';
+import Sandbox from './sandbox.js';
+import HotReload from './hot-reload.js';
+import WebSearch from './web-search.js';
 
 class Agent0 {
-  constructor() {
+  constructor(options = {}) {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY
     });
@@ -22,13 +27,96 @@ class Agent0 {
     this.skills = new SkillsManager();
     this.skillManager = new SkillManager('./skills');
     this.github = new GitHubService();
+    
+    // Phase 3 features
+    this.router = new AgentRouter();
+    this.sandbox = new Sandbox();
+    this.hotReload = options.enableHotReload ? new HotReload(this) : null;
+    this.webSearch = new WebSearch();
 
     this.identity = null;
     this.soul = null;
     this.skillsContext = '';
+    this.streamingEnabled = options.enableStreaming !== false; // Default true
+    
+    // Define tool schemas using TypeBox for better validation
+    this.toolSchemas = this.defineToolSchemas();
     
     // Define tools for OpenAI function calling
-    this.tools = [
+    this.tools = this.buildTools();
+  }
+
+  /**
+   * Define tool schemas using TypeBox
+   */
+  defineToolSchemas() {
+    return {
+      install_skill: Type.Object({
+        ownerRepo: Type.String({
+          description: 'Repository in format "owner/repo", e.g., "vercel/code-review"',
+          pattern: '^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$'
+        })
+      }),
+      list_skills: Type.Object({}),
+      remove_skill: Type.Object({
+        skillName: Type.String({
+          description: 'Name of the skill file to remove, e.g., "code-review.md"'
+        })
+      }),
+      create_pr: Type.Object({
+        taskDescription: Type.String({
+          description: 'Description of the task to implement',
+          minLength: 10,
+          maxLength: 500
+        })
+      }),
+      execute_code_sandbox: Type.Object({
+        code: Type.String({
+          description: 'Code to execute in sandbox',
+          maxLength: 50000
+        }),
+        language: Type.Optional(Type.Union([
+          Type.Literal('javascript'),
+          Type.Literal('python'),
+          Type.Literal('bash')
+        ], {
+          description: 'Programming language',
+          default: 'javascript'
+        }))
+      }),
+      web_search: Type.Object({
+        query: Type.String({
+          description: 'Search query',
+          minLength: 1,
+          maxLength: 200
+        }),
+        maxResults: Type.Optional(Type.Number({
+          description: 'Maximum number of results',
+          minimum: 1,
+          maximum: 10,
+          default: 5
+        }))
+      }),
+      semantic_memory_search: Type.Object({
+        query: Type.String({
+          description: 'Semantic search query to find relevant past conversations',
+          minLength: 1
+        }),
+        limit: Type.Optional(Type.Number({
+          description: 'Maximum number of results',
+          minimum: 1,
+          maximum: 10,
+          default: 5
+        }))
+      })
+    };
+  }
+
+  /**
+   * Build tools array from schemas
+   */
+  buildTools() {
+    return [
       {
         type: 'function',
         function: {
@@ -90,6 +178,75 @@ class Agent0 {
             required: ['taskDescription']
           }
         }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'execute_code_sandbox',
+          description: 'Execute code in an isolated Docker sandbox environment. Safe for running untrusted code with no network access.',
+          parameters: {
+            type: 'object',
+            properties: {
+              code: {
+                type: 'string',
+                description: 'Code to execute in the sandbox'
+              },
+              language: {
+                type: 'string',
+                enum: ['javascript', 'python', 'bash'],
+                description: 'Programming language (default: javascript)',
+                default: 'javascript'
+              }
+            },
+            required: ['code']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'web_search',
+          description: 'Search the web for information. Returns relevant web pages and snippets.',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Search query'
+              },
+              maxResults: {
+                type: 'number',
+                description: 'Maximum number of results (default: 5)',
+                minimum: 1,
+                maximum: 10
+              }
+            },
+            required: ['query']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'semantic_memory_search',
+          description: 'Search past conversations using semantic similarity. Finds conversations related to a topic even if they don\'t use the exact same words.',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Semantic search query'
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum number of results (default: 5)',
+                minimum: 1,
+                maximum: 10
+              }
+            },
+            required: ['query']
+          }
+        }
       }
     ];
   }
@@ -112,11 +269,25 @@ class Agent0 {
     await this.skillManager.ensureDirectories();
     this.skillsContext = await this.skillManager.getSkillsContext();
 
+    // Initialize agent router for multi-agent collaboration
+    await this.router.initialize();
+    
+    // Start hot reload if enabled
+    if (this.hotReload) {
+      this.hotReload.start();
+      console.log('🔥 Hot reload enabled');
+    }
+
     console.log(`Agent0 v${this.identity.version} ready`);
     console.log(`Soul loaded (${this.soul.length} characters)`);
     
     if (this.skillsContext) {
       console.log(`Skills.sh integration loaded (${this.skillsContext.length} characters)`);
+    }
+    
+    if (this.router.isEnabled()) {
+      const agents = this.router.getAvailableAgents();
+      console.log(`Multi-agent routing enabled (${agents.length} agents: ${agents.join(', ')})`);
     }
   }
 
@@ -246,6 +417,12 @@ Respond now:`;
       console.log(`\n📨 Processing message from @${message.username} (${message.user_id})`);
       console.log(`   Text: "${message.text}"`);
       
+      // Route message to appropriate agent if multi-agent is enabled
+      const agentId = this.router.route(message, { userId: message.user_id });
+      if (agentId !== 'primary') {
+        console.log(`🔀 Routing to agent: ${agentId}`);
+      }
+      
       // Load conversation history for this user
       const history = await this.memory.recall(message.user_id, 10);
       
@@ -324,6 +501,18 @@ Respond now:`;
           
         case 'create_pr':
           result = await this.handleToolCreatePR(message, args.taskDescription);
+          break;
+          
+        case 'execute_code_sandbox':
+          result = await this.handleToolExecuteCodeSandbox(args.code, args.language);
+          break;
+          
+        case 'web_search':
+          result = await this.handleToolWebSearch(args.query, args.maxResults);
+          break;
+          
+        case 'semantic_memory_search':
+          result = await this.handleToolSemanticMemorySearch(message.user_id, args.query, args.limit);
           break;
           
         default:
@@ -537,6 +726,105 @@ Respond now:`;
     }
   }
 
+  /**
+   * Tool handler: Execute code in sandbox
+   */
+  async handleToolExecuteCodeSandbox(code, language = 'javascript') {
+    try {
+      // Validate code
+      const validation = this.sandbox.validateCode(code, language);
+      if (!validation.valid) {
+        return {
+          success: false,
+          message: validation.error
+        };
+      }
+
+      // Check if Docker is available
+      const dockerAvailable = await this.sandbox.isAvailable();
+      if (!dockerAvailable) {
+        return {
+          success: false,
+          message: 'Docker sandbox is not available. Docker must be installed and running.'
+        };
+      }
+
+      // Execute code
+      const result = await this.sandbox.executeCode(code, language);
+      
+      return {
+        success: result.success,
+        output: result.output,
+        error: result.error,
+        exitCode: result.exitCode,
+        executionTime: result.executionTime,
+        message: result.success ? 'Code executed successfully' : 'Code execution failed'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Sandbox execution error: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Tool handler: Web search
+   */
+  async handleToolWebSearch(query, maxResults = 5) {
+    try {
+      const searchResult = await this.webSearch.search(query, { maxResults });
+      
+      if (!searchResult.success) {
+        return {
+          success: false,
+          message: searchResult.error || 'Search failed'
+        };
+      }
+
+      return {
+        success: true,
+        query: searchResult.query,
+        provider: searchResult.provider,
+        results: searchResult.results,
+        formatted: this.webSearch.formatResults(searchResult),
+        message: `Found ${searchResult.results.length} result(s)`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Web search error: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Tool handler: Semantic memory search
+   */
+  async handleToolSemanticMemorySearch(userId, query, limit = 5) {
+    try {
+      const results = await this.memory.semanticSearch(userId, query, { limit });
+      
+      return {
+        success: true,
+        query,
+        results: results.map(r => ({
+          user: r.user,
+          bot: r.bot,
+          timestamp: r.timestamp,
+          similarity: r.similarity
+        })),
+        count: results.length,
+        message: `Found ${results.length} semantically similar conversation(s)`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Semantic search error: ${error.message}`
+      };
+    }
+  }
+
   async updateStats(messageCount) {
     try {
       console.log('📊 Updating agent statistics...');
@@ -724,6 +1012,11 @@ IMPORTANT: All file paths must be relative to the repository root and must not c
     
     // Stop scheduler
     this.scheduler.stop();
+    
+    // Stop hot reload if enabled
+    if (this.hotReload) {
+      await this.hotReload.stop();
+    }
     
     console.log('Shutdown complete');
   }

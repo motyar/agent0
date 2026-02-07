@@ -1,10 +1,19 @@
 import fs from 'fs/promises';
 import path from 'path';
+import OpenAI from 'openai';
 
 class MemoryEngine {
   constructor() {
     this.conversationsPath = 'memory/conversations';
     this.indexPath = 'memory/conversations/index.json';
+    this.embeddingsPath = 'memory/embeddings';
+    
+    // Initialize OpenAI for embeddings (only if API key is available)
+    this.openai = process.env.OPENAI_API_KEY ? new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    }) : null;
+    
+    this.embeddingModel = 'text-embedding-3-small';
   }
 
   /**
@@ -32,11 +41,13 @@ class MemoryEngine {
     }
 
     // Add turn
-    conversation.history.push({
+    const turn = {
       timestamp: new Date().toISOString(),
       user: userMessage,
       bot: botResponse
-    });
+    };
+    
+    conversation.history.push(turn);
 
     // Keep last 100 turns
     if (conversation.history.length > 100) {
@@ -47,6 +58,16 @@ class MemoryEngine {
 
     // Save
     await fs.writeFile(userFile, JSON.stringify(conversation, null, 2));
+
+    // Generate and store embedding for semantic search (if OpenAI is available)
+    if (this.openai) {
+      try {
+        await this.generateAndStoreEmbedding(userId, turn, conversation.history.length - 1);
+      } catch (error) {
+        console.error('Failed to generate embedding:', error.message);
+        // Don't fail the entire remember operation if embedding fails
+      }
+    }
 
     // Update index
     await this.updateIndex(userId);
@@ -309,6 +330,156 @@ class MemoryEngine {
 
   getCurrentMonth() {
     return new Date().toISOString().slice(0, 7); // "2026-02"
+  }
+
+  /**
+   * Generate embedding for a conversation turn using OpenAI
+   */
+  async generateEmbedding(text) {
+    if (!this.openai) {
+      throw new Error('OpenAI not initialized - API key required for embeddings');
+    }
+
+    const response = await this.openai.embeddings.create({
+      model: this.embeddingModel,
+      input: text
+    });
+
+    return response.data[0].embedding;
+  }
+
+  /**
+   * Generate and store embedding for a conversation turn
+   */
+  async generateAndStoreEmbedding(userId, turn, turnIndex) {
+    const month = this.getCurrentMonth();
+    const embeddingFile = path.join(this.embeddingsPath, month, `user-${userId}.json`);
+
+    // Create combined text for embedding (user + bot for context)
+    const combinedText = `User: ${turn.user}\nBot: ${turn.bot}`;
+    
+    // Generate embedding
+    const embedding = await this.generateEmbedding(combinedText);
+
+    // Ensure directory exists
+    await fs.mkdir(path.dirname(embeddingFile), { recursive: true });
+
+    // Load or create embeddings file
+    let embeddingsData;
+    try {
+      const data = await fs.readFile(embeddingFile, 'utf-8');
+      embeddingsData = JSON.parse(data);
+    } catch (error) {
+      embeddingsData = {
+        user_id: userId,
+        embeddings: []
+      };
+    }
+
+    // Add embedding
+    embeddingsData.embeddings.push({
+      index: turnIndex,
+      timestamp: turn.timestamp,
+      embedding: embedding
+    });
+
+    // Keep last 100 embeddings to match conversation history
+    if (embeddingsData.embeddings.length > 100) {
+      embeddingsData.embeddings = embeddingsData.embeddings.slice(-100);
+    }
+
+    // Save
+    await fs.writeFile(embeddingFile, JSON.stringify(embeddingsData, null, 2));
+  }
+
+  /**
+   * Calculate cosine similarity between two vectors
+   */
+  cosineSimilarity(vecA, vecB) {
+    if (vecA.length !== vecB.length) {
+      throw new Error('Vectors must have the same length');
+    }
+
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+
+    for (let i = 0; i < vecA.length; i++) {
+      dotProduct += vecA[i] * vecB[i];
+      normA += vecA[i] * vecA[i];
+      normB += vecB[i] * vecB[i];
+    }
+
+    normA = Math.sqrt(normA);
+    normB = Math.sqrt(normB);
+
+    if (normA === 0 || normB === 0) {
+      return 0;
+    }
+
+    return dotProduct / (normA * normB);
+  }
+
+  /**
+   * Semantic search using vector embeddings
+   * Returns conversation turns most semantically similar to the query
+   */
+  async semanticSearch(userId, query, options = {}) {
+    const limit = options.limit || 5;
+    const minSimilarity = options.minSimilarity || 0.7;
+
+    if (!this.openai) {
+      console.warn('Semantic search requires OpenAI API key, falling back to keyword search');
+      return this.search(userId, query, options);
+    }
+
+    try {
+      // Generate embedding for query
+      const queryEmbedding = await this.generateEmbedding(query);
+
+      // Load stored embeddings
+      const month = this.getCurrentMonth();
+      const embeddingFile = path.join(this.embeddingsPath, month, `user-${userId}.json`);
+      
+      let embeddingsData;
+      try {
+        const data = await fs.readFile(embeddingFile, 'utf-8');
+        embeddingsData = JSON.parse(data);
+      } catch (error) {
+        // No embeddings found, return empty results
+        return [];
+      }
+
+      // Load conversation history
+      const history = await this.recall(userId, 100);
+
+      // Calculate similarity scores
+      const scored = embeddingsData.embeddings.map(item => {
+        const similarity = this.cosineSimilarity(queryEmbedding, item.embedding);
+        const turn = history[item.index];
+        
+        return {
+          turn,
+          similarity,
+          timestamp: item.timestamp
+        };
+      }).filter(item => item.turn); // Filter out any missing turns
+
+      // Sort by similarity and return top results
+      return scored
+        .filter(item => item.similarity >= minSimilarity)
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, limit)
+        .map(item => ({
+          ...item.turn,
+          similarity: item.similarity
+        }));
+
+    } catch (error) {
+      console.error('Semantic search failed:', error.message);
+      // Fall back to keyword search
+      return this.search(userId, query, options);
+    }
   }
 }
 
