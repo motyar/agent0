@@ -118,11 +118,16 @@ class GitHubService {
     const commit = await this.api(`/repos/${this.owner}/${this.repo}/git/commits/${branchSha}`);
     const baseTreeSha = commit.tree.sha;
 
+    // Sanitize task description to prevent any issues
+    const sanitizedDescription = taskDescription
+      .replace(/[<>]/g, '') // Remove angle brackets
+      .trim();
+
     // Create a new blob for the task metadata file
     const timestamp = new Date().toISOString();
     const taskMetadata = `# Task Request
 
-**Description:** ${taskDescription}
+**Description:** ${sanitizedDescription}
 **Created:** ${timestamp}
 **Status:** Pending
 
@@ -148,7 +153,7 @@ GitHub requires at least one commit difference to create a pull request.
 
     // Create a new commit
     const newCommit = await this.api(`/repos/${this.owner}/${this.repo}/git/commits`, 'POST', {
-      message: `Initialize task branch\n\n${taskDescription}`,
+      message: `Initialize task branch\n\n${sanitizedDescription}`,
       tree: tree.sha,
       parents: [branchSha]
     });

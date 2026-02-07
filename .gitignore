@@ -15,6 +15,9 @@ node_modules/
 # Task metadata files (created on PR branches)
 .tasks/
 
+# Temporary manual test scripts (not for CI/CD)
+test-pr-creation.js
+
 # Docker files (when implemented)
 *.dockerfile
 docker-compose.yml
