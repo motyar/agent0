@@ -4,48 +4,14 @@
 - [Core Architecture](#core-architecture)
 - [Skills Engine](#skills-engine)
 - [Multi-Provider LLM](#multi-provider-llm)
-- [Self-Improvement](#self-improvement)
 - [PR Creation via Bot](#pr-creation-via-bot)
 - [Memory System](#memory-system)
-- [Monitoring](#monitoring)
 - [Automation & Scheduling](#automation--scheduling)
 - [Developer Features](#developer-features)
 
 ## Core Architecture
 
-Agent0 has been architected for simplicity and extensibility:
-
-### Monitor (Consolidated)
-Combines logging, health checks, and usage tracking into a single unified system.
-
-**Features:**
-- Configurable log levels (error, warn, info, debug, trace)
-- Health check registration and monitoring
-- API usage and cost tracking
-- Colored console output with timestamps
-
-**Usage:**
-```javascript
-import Monitor from './src/monitor.js';
-
-const monitor = new Monitor({ level: 'info' });
-
-// Logging
-monitor.info('Agent starting...');
-monitor.error('Failed to connect');
-
-// Health checks
-monitor.register('api', async () => {
-  // Check API health
-  return { status: 'ok' };
-});
-
-await monitor.runAll();
-
-// Usage tracking
-monitor.track('gpt-4o-mini', 150, 0.0002);
-const summary = monitor.getSummary();
-```
+Agent0 has been architected for simplicity and extensibility.
 
 ## Skills Engine
 
@@ -220,44 +186,6 @@ console.log(result.content);
 console.log(`Cost: $${result.cost.toFixed(4)}`);
 ```
 
-## Self-Improvement
-
-Automated analysis and improvement suggestion system.
-
-### How It Works
-
-1. **Daily Analysis** - Runs automatically at 2 AM UTC
-2. **Data Collection** - Gathers performance metrics, conversations, capabilities
-3. **AI Analysis** - Uses LLM to analyze agent performance
-4. **Suggestions** - Generates actionable improvement recommendations
-5. **Issue Creation** - Automatically creates GitHub issues with suggestions
-
-### Manual Execution
-
-```bash
-npm run self-improve
-```
-
-### Analysis Output
-
-Results are saved to `memory/self-improvement/analysis-YYYY-MM-DD.json`:
-
-```json
-{
-  "timestamp": "2026-02-07T12:00:00.000Z",
-  "analysis": "Analysis text...",
-  "suggestions": [
-    {
-      "title": "Add web search capability",
-      "priority": "High",
-      "type": "Feature",
-      "description": "...",
-      "implementation": "..."
-    }
-  ]
-}
-```
-
 ## PR Creation via Bot
 
 Create pull requests directly from Telegram bot messages for execution by GitHub Copilot agents.
@@ -267,7 +195,6 @@ Create pull requests directly from Telegram bot messages for execution by GitHub
 1. **Send a Task Request**: Message the bot with your task
 2. **PR Creation**: Bot automatically creates a branch and pull request
 3. **Copilot Execution**: GitHub Copilot agents execute the task
-4. **Track Progress**: Monitor the PR for updates
 
 ### Usage
 
@@ -385,53 +312,6 @@ console.log(summary.topics);
 console.log(summary.sentiment);
 ```
 
-## Monitoring
-
-Consolidated monitoring system combining logging, health checks, and usage tracking.
-
-### Logging
-
-Multi-level logging with color-coded output:
-
-```javascript
-monitor.error('Critical error');   // Red
-monitor.warn('Warning');           // Yellow  
-monitor.info('Information');       // Cyan
-monitor.debug('Debug info');       // Magenta
-monitor.trace('Trace details');    // White
-```
-
-### Health Checks
-
-Register and run health checks:
-
-```javascript
-monitor.register('database', async () => {
-  await db.ping();
-  return { status: 'healthy' };
-}, { 
-  interval: 60000,
-  critical: true 
-});
-
-const results = await monitor.runAll();
-```
-
-### Usage Tracking
-
-Track API usage and costs:
-
-```javascript
-monitor.track(model, tokens, cost);
-
-const summary = monitor.getSummary();
-// {
-//   total: { requests, tokens, cost },
-//   by_model: { ... },
-//   by_date: { ... }
-// }
-```
-
 ## Automation & Scheduling
 
 ### Cron Jobs
@@ -461,7 +341,6 @@ Scheduled task execution using standard cron syntax.
 **Built-in Task Types**:
 - `self_analysis` - Analyze agent performance and identify improvements
 - `memory_cleanup` - Clean up old conversation history
-- `health_check` - Run system health diagnostics
 - `custom` - Execute custom task handlers
 
 ### Wakeup Tasks
@@ -497,7 +376,6 @@ Real-time event processing via GitHub repository dispatch.
 
 **Trigger Events:**
 - telegram-message - Process messages in real-time
-- health-check - Run diagnostics
 - custom - Handle custom events
 
 **Example Trigger:**
@@ -511,90 +389,29 @@ curl -X POST \
 
 ## Developer Features
 
-### Self-Improvement Workflow
-
-Automated daily analysis with issue creation.
-
-**File:** `.github/workflows/self-improve.yml`
-
-**Schedule:** Daily at 2 AM UTC
-
-**Process:**
-1. Run analysis
-2. Commit results to memory/self-improvement/
-3. Extract improvement suggestions
-4. Create GitHub issue with findings
-
 ### Available Commands
 
 ```bash
 npm run start         # Start agent
 npm run poll          # Poll Telegram
-npm run doctor        # System diagnostics
-npm run fix           # Auto-fix issues
-npm run stats         # View statistics
-npm run self-improve  # Run self-improvement
 ```
-
-### Doctor Command
-
-System diagnostics and automatic fixes:
-
-```bash
-npm run doctor  # Diagnose issues
-npm run fix     # Auto-fix common problems
-```
-
-**Checks:**
-- Node.js version
-- Package dependencies
-- Environment variables
-- Directory structure
-- Configuration validity
 
 ## Migration Guide
 
-### From Old Architecture
+The codebase has been simplified to focus on core functionality.
 
-The following modules have been consolidated:
-
-**Logger, HealthCheck, UsageTracker → Monitor**
+**Skills Management**
 ```javascript
-// Old
-import Logger from './logger.js';
-import HealthCheck from './health-check.js';
-import UsageTracker from './usage-tracker.js';
-
-const logger = new Logger();
-const health = new HealthCheck();
-const tracker = new UsageTracker();
-
-// New
-import Monitor from './monitor.js';
-
-const monitor = new Monitor();
-// monitor has logger, health, and tracker methods
-```
-
-**SkillsManager → SkillsEngine**
-```javascript
-// Old
+// Use SkillsManager and SkillManager for skills
 import SkillsManager from './skills-manager.js';
+import SkillManager from './skillManager.js';
 const skills = new SkillsManager();
-
-// New
-import SkillsEngine from './skills-engine.js';
-const skills = new SkillsEngine();
-// API is mostly compatible
+const skillManager = new SkillManager('./skills');
 ```
 
-**Direct OpenAI → LLM**
+**LLM Integration**
 ```javascript
-// Old
-import OpenAI from 'openai';
-const openai = new OpenAI();
-
-// New
+// Use multi-provider LLM abstraction
 import LLM from './llm.js';
 const llm = new LLM();
 await llm.initialize();
@@ -609,12 +426,11 @@ const result = await llm.complete({ messages });
 
 ### Current Status
 
-- ✅ Monitor (consolidated logging, health, usage)
 - ✅ Skills Engine (auto-discovery)
 - ✅ Multi-Provider LLM
-- ✅ Self-Improvement Loop
 - ✅ Enhanced Memory Search
 - ✅ Webhook Support
+- ✅ PR Creation via Bot
 - 🚧 Semantic Search (basic implementation)
 - ⏳ Hot Reload
 - ⏳ Docker Sandbox
@@ -623,7 +439,6 @@ const result = await llm.complete({ messages });
 ## Support
 
 For questions or issues:
-1. Run `npm run doctor` to diagnose
-2. Check [skills/README.md](skills/README.md) for skills documentation
-3. Review `config/models.json` for LLM configuration
-4. Open an issue on GitHub
+1. Check [skills/README.md](skills/README.md) for skills documentation
+2. Review `config/models.json` for LLM configuration
+3. Open an issue on GitHub

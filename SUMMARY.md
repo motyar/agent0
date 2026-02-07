@@ -8,7 +8,7 @@ This PR successfully implements a comprehensive set of advanced features for Age
 ### ✅ Automation & Scheduling
 - **Cron Jobs**: Full cron job support for scheduled task execution
   - Configurable schedules using standard cron syntax
-  - Built-in task types: self_analysis, memory_cleanup, health_check, custom
+  - Built-in task types: self_analysis, memory_cleanup, custom
   - Configuration file: `config/scheduler.json`
   
 - **Wakeup Tasks**: Time-based triggers for one-time events
@@ -33,48 +33,15 @@ This PR successfully implements a comprehensive set of advanced features for Age
 - **Infrastructure**: Documentation and architecture prepared
 
 ### ✅ Developer Features
-- **Comprehensive Logging System**:
+- **Comprehensive Logging**:
   - Multiple log levels (error, warn, info, debug, trace)
-  - Colored output with timestamps
-  - Configurable levels
+  - Console output with timestamps
   - Integrated throughout codebase
 
-- **Health Checks**:
-  - Gateway health monitoring system
-  - System and API health checks
-  - Automatic periodic checks (every 15 minutes)
-  - Customizable check intervals and timeouts
-
-- **Doctor Command**:
-  - Diagnose configuration issues (`npm run doctor`)
-  - Automatic fixes for common issues (`npm run fix`)
-  - Comprehensive system checks (Node.js, dependencies, env vars, directories)
-
-- **Statistics Command**:
-  - View comprehensive agent statistics (`npm run stats`)
-  - Usage tracking, skills stats, session info, health status
-
 ### ✅ Additional Features
-- **Usage Tracking**:
-  - Track API requests, tokens, and costs
-  - Breakdown by model and date
-  - Cost estimation with documented pricing source
-
-- **Retry Policy**:
-  - Automatic retry with exponential backoff
-  - Configurable attempts, delays, and backoff factors
-  - Integrated into all API calls
-
-- **Session Pruning**:
-  - Automatic context management
-  - Token-based pruning algorithm
-  - Configurable thresholds and limits
-  - Keeps system messages intact
-
 - **Graceful Shutdown**:
   - Cleanup of resources
   - Stop scheduled tasks
-  - Session cleanup
 
 ### ⏳ Future Features (Phase 3)
 - Hot reload for TypeScript changes
@@ -86,7 +53,7 @@ This PR successfully implements a comprehensive set of advanced features for Age
 
 ## Files Created/Modified
 
-### New Files (17)
+### New Files (10)
 1. `AGENTS.md` - Agent configuration documentation
 2. `TOOLS.md` - Tools and integrations documentation
 3. `FEATURES.md` - Comprehensive feature documentation
@@ -97,12 +64,6 @@ This PR successfully implements a comprehensive set of advanced features for Age
 8. `skills/bundled/memory-search.js` - Memory search skill
 9. `src/scheduler.js` - Scheduler implementation
 10. `src/skills-manager.js` - Skills platform implementation
-11. `src/retry-policy.js` - Retry policy implementation
-12. `src/health-check.js` - Health check system
-13. `src/usage-tracker.js` - Usage tracking system
-14. `src/session-manager.js` - Session management
-15. `src/logger.js` - Logging system
-16. `src/doctor.js` - Diagnostic tool
 
 ### Modified Files (4)
 1. `README.md` - Updated with new features
@@ -147,9 +108,6 @@ npm install
 
 ### Commands
 ```bash
-npm run doctor        # Run diagnostics
-npm run fix          # Fix common issues
-npm run stats        # View statistics
 npm start            # Start agent
 npm run poll         # Poll for messages
 ```
@@ -188,11 +146,7 @@ npm run poll         # Poll for messages
 Each feature is implemented as a separate module with clear interfaces:
 - Scheduler (cron jobs, wakeup tasks)
 - SkillsManager (skills platform)
-- RetryPolicy (retry logic)
-- HealthCheck (monitoring)
-- UsageTracker (cost tracking)
-- SessionManager (context management)
-- Logger (logging)
+- MemoryEngine (conversation storage)
 
 ### Integration Points
 All modules are integrated into the Agent0 core:
@@ -256,7 +210,6 @@ New features are opt-in and don't affect existing workflows.
 ### Phase 4 (Future)
 - Web search integration
 - Advanced tool execution
-- Self-improvement loop
 - Code generation capabilities
 
 ## Success Metrics

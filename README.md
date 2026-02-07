@@ -7,7 +7,6 @@ Agent0 is an autonomous AI agent that runs entirely on GitHub Actions, communica
 ## 🌟 Features
 
 - **🧠 Persistent Memory**: Every conversation stored in Git history
-- **🔄 Self-Improving**: Analyzes performance and writes new skills
 - **⏰ Asynchronous**: Responds every 5 minutes via GitHub Actions cron
 - **💬 Telegram Bot**: Simple text-based interface
 - **📝 Self-Aware**: Reads its own `soul.md` and understands its purpose
@@ -28,7 +27,6 @@ User → Telegram → GitHub Actions (every 5 min) → Agent0 → Response
 agent0/
 ├── .github/workflows/       # GitHub Actions workflows
 │   ├── process-messages.yml # Main message processing (every 5 min)
-│   ├── self-improve.yml     # Daily self-improvement analysis
 │   └── webhook.yml          # Webhook handler for real-time events
 ├── agents/primary/          # Agent's consciousness
 │   ├── soul.md             # Personality and purpose
@@ -37,8 +35,7 @@ agent0/
 │   ├── models.json         # LLM provider configuration
 │   └── scheduler.json      # Scheduled tasks
 ├── memory/                  # Persistent memory
-│   ├── conversations/      # All conversations (by month/user)
-│   └── self-improvement/   # Self-improvement analyses
+│   └── conversations/      # All conversations (by month/user)
 ├── queue/                  # Message queue
 ├── skills/                 # Modular skills
 │   ├── bundled/           # Built-in skills
@@ -50,9 +47,7 @@ agent0/
     ├── telegram.js        # Telegram integration
     ├── memory-engine.js   # Memory management with search
     ├── skills-engine.js   # Auto-discovery skills system
-    ├── llm.js             # Multi-provider LLM abstraction
-    ├── monitor.js         # Logging, health, usage tracking
-    └── self-improve.js    # Self-improvement loop
+    └── llm.js             # Multi-provider LLM abstraction
 ```
 
 ## 🚀 Setup
@@ -169,13 +164,13 @@ Browse thousands of skills at <a href="https://skills.sh">skills.sh</a>
 You can ask Agent0 to create pull requests that will be executed by GitHub Copilot agents:
 
 ```
-You: Create a PR to add a health check endpoint
+You: Create a PR to improve error handling
 Agent0: ✅ PR Created Successfully!
         PR: #123
-        Branch: bot-task/add-a-health-check-endpoint-1234567890
+        Branch: bot-task/improve-error-handling-1234567890
         The PR is now ready for GitHub Copilot agents to work on.
 
-You: Make a PR to fix authentication bug
+You: Make a PR to add authentication
 Agent0: ✅ PR Created Successfully!
         ...
 ```
@@ -236,25 +231,11 @@ Skills are organized in three directories:
 
 ## 🛠️ Developer Tools
 
-### Self-Improvement
-
-Agent0 can analyze its own performance and suggest improvements:
-
-```bash
-npm run self-improve
-```
-
-This runs daily via GitHub Actions and creates issues with improvement suggestions.
-
 ### Available Commands
 
 ```bash
 npm run start         # Start the agent
 npm run poll          # Poll for Telegram messages
-npm run doctor        # Run system diagnostics
-npm run fix           # Attempt to fix common issues
-npm run stats         # View agent statistics
-npm run self-improve  # Run self-improvement analysis
 ```
 
 ## 📊 Current Status
@@ -269,8 +250,6 @@ npm run self-improve  # Run self-improvement analysis
 - ✅ Git-based persistence
 - ✅ Multi-provider LLM support (OpenAI, Anthropic)
 - ✅ Auto-discovery skills engine
-- ✅ Self-improvement loop
-- ✅ Consolidated monitoring (logging, health, usage)
 - ✅ PR creation via bot for Copilot agents
 - ✅ Webhook support for real-time events
 
@@ -297,23 +276,14 @@ npm run self-improve  # Run self-improvement analysis
 - [x] Context-aware responses
 - [x] Cron jobs and scheduled tasks
 - [x] Skills platform
-- [x] Health checks
-- [x] Doctor command
-- [x] Usage tracking
-- [x] Logging system
 
-### Phase 2: Self-Improvement ← **IN PROGRESS**
-- [x] Nightly self-analysis
-- [x] Identify capability gaps
-- [x] Generate improvement suggestions
-- [ ] Automatic skill generation
-- [ ] Update own documentation
-
-### Phase 3: Advanced
+### Phase 2: Enhanced Features ← **COMPLETE**
 - [x] Multi-provider LLM support
 - [x] Auto-discovery skills engine
 - [x] Enhanced memory search
 - [x] Webhook support
+
+### Phase 3: Advanced
 - [ ] Semantic memory search (vector embeddings)
 - [ ] Multi-agent collaboration
 - [ ] Docker-based sandbox mode
