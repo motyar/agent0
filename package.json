@@ -10,7 +10,9 @@
     "doctor": "node src/doctor.js",
     "fix": "node src/doctor.js fix",
     "stats": "node src/agent.js stats",
-    "test": "echo \"Tests coming soon\" && exit 0"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
   },
   "keywords": [
     "ai",
@@ -25,6 +27,9 @@
     "node-telegram-bot-api": "^0.66.0",
     "openai": "^4.0.0",
     "cron": "^3.1.7"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   },
   "engines": {
     "node": ">=22.0.0"
