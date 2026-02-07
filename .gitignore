@@ -12,6 +12,9 @@ node_modules/
 *.swo
 *~
 
+# Task metadata files (created on PR branches)
+.tasks/
+
 # Docker files (when implemented)
 *.dockerfile
 docker-compose.yml
