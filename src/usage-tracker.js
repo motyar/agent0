@@ -48,8 +48,6 @@ class UsageTracker {
     this.usage.by_date[date].requests++;
     this.usage.by_date[date].tokens += tokens;
     this.usage.by_date[date].cost += cost;
-    
-    console.log(`📊 API usage tracked: ${model} - ${tokens} tokens ($${cost.toFixed(4)})`);
   }
 
   /**

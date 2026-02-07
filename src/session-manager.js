@@ -59,14 +59,15 @@ class SessionManager {
     
     console.log(`✂️  Pruning session ${sessionId}...`);
     
-    const messagesToRemove = Math.floor(session.context.length * this.prunePercent);
+    // Calculate target tokens to remove (prune by token count, not message count)
+    const targetTokensToRemove = Math.floor(session.totalTokens * this.prunePercent);
     
-    if (messagesToRemove > 0) {
-      // Remove oldest messages (keep system messages)
+    if (targetTokensToRemove > 0) {
       const removed = [];
       let removedTokens = 0;
       
-      for (let i = 0; i < session.context.length && removed.length < messagesToRemove; i++) {
+      // Remove oldest messages (keep system messages) until we reach target
+      for (let i = 0; i < session.context.length && removedTokens < targetTokensToRemove; i++) {
         if (session.context[i].role !== 'system') {
           removed.push(i);
           removedTokens += session.context[i].tokens || 0;

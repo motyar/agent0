@@ -122,9 +122,11 @@ Respond now:`;
 
   /**
    * Estimate API cost based on model and tokens
+   * Last updated: 2026-02-07
+   * Pricing source: https://openai.com/api/pricing/
    */
   estimateCost(model, tokens) {
-    // Rough cost estimates (adjust based on actual pricing)
+    // Cost estimates per 1k tokens (input + output averaged)
     const costPer1kTokens = {
       'gpt-4o-mini': 0.00015,
       'gpt-4o': 0.005,

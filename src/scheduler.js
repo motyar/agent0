@@ -102,7 +102,16 @@ class Scheduler {
     const triggerDate = new Date(trigger_time);
     
     if (triggerDate <= now) {
-      console.log(`⚠️  Wakeup task ${id} trigger time has passed, skipping`);
+      // Task should have already run - execute immediately if within grace period (1 hour)
+      const gracePeroidMs = 60 * 60 * 1000; // 1 hour
+      if (now - triggerDate < gracePeroidMs) {
+        console.log(`⚠️  Wakeup task ${id} is overdue, executing immediately`);
+        this.executeTask(task).catch(err => {
+          console.error(`❌ Failed to execute overdue task ${id}:`, err.message);
+        });
+      } else {
+        console.log(`⚠️  Wakeup task ${id} trigger time has passed grace period, skipping`);
+      }
       return;
     }
     

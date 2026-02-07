@@ -48,7 +48,14 @@ class SkillsManager {
     ];
     
     for (const dir of dirs) {
-      await fs.mkdir(dir, { recursive: true }).catch(() => {});
+      try {
+        await fs.mkdir(dir, { recursive: true });
+      } catch (error) {
+        // Only ignore EEXIST errors
+        if (error.code !== 'EEXIST') {
+          console.error(`⚠️  Failed to create directory ${dir}:`, error.message);
+        }
+      }
     }
   }
 
