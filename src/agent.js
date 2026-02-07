@@ -11,6 +11,8 @@ import HealthCheck from './health-check.js';
 import UsageTracker from './usage-tracker.js';
 import SessionManager from './session-manager.js';
 import Logger from './logger.js';
+import GitHubService from './github-service.js';
+import TaskParser from './task-parser.js';
 
 class Agent0 {
   constructor() {
@@ -27,6 +29,8 @@ class Agent0 {
     this.usageTracker = new UsageTracker();
     this.sessionManager = new SessionManager();
     this.logger = new Logger({ level: 'info' });
+    this.github = new GitHubService();
+    this.taskParser = new TaskParser();
 
     this.identity = null;
     this.soul = null;
@@ -201,6 +205,15 @@ Respond now:`;
       console.log(`\n📨 Processing message from @${message.username} (${message.user_id})`);
       console.log(`   Text: "${message.text}"`);
       
+      // Check if this is a PR creation request
+      const taskInfo = this.taskParser.parse(message.text);
+      
+      if (taskInfo.isPRRequest && this.github.isAvailable()) {
+        console.log('🔍 Detected PR creation request');
+        await this.handlePRRequest(message, taskInfo);
+        return;
+      }
+      
       // Load conversation history for this user
       const history = await this.memory.recall(message.user_id, 10);
       
@@ -228,6 +241,69 @@ Respond now:`;
       
     } catch (error) {
       console.error(`❌ Error processing message:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle PR creation request from bot
+   */
+  async handlePRRequest(message, taskInfo) {
+    try {
+      console.log('🚀 Creating PR for task request...');
+      
+      // Validate task description
+      if (!this.taskParser.isValidTask(taskInfo.taskDescription)) {
+        const errorResponse = `I understand you want to create a PR, but the task description needs to be more specific. Please provide at least 10 characters describing what you want to implement.
+
+Example: "Create a PR to add a health check endpoint that returns server status"`;
+        
+        await this.telegram.sendMessage(message.chat_id, errorResponse);
+        await this.memory.remember(message.user_id, message.text, errorResponse);
+        return;
+      }
+
+      // Create the PR
+      const result = await this.github.createTaskPR({
+        taskDescription: taskInfo.taskDescription,
+        requestedBy: message.username || message.first_name,
+        userId: message.user_id
+      });
+
+      // Send success response
+      const successResponse = `✅ **PR Created Successfully!**
+
+I've created a pull request for your task:
+
+**Task:** ${taskInfo.taskDescription}
+**PR:** [#${result.pr_number}](${result.pr_url})
+**Branch:** \`${result.branch}\`
+
+The PR is now ready for GitHub Copilot agents to work on. They will implement the task and push changes to the branch.
+
+You can track progress at: ${result.pr_url}`;
+
+      await this.telegram.sendMessage(message.chat_id, successResponse);
+      
+      // Save to memory
+      await this.memory.remember(message.user_id, message.text, successResponse);
+      
+      console.log(`✅ PR #${result.pr_number} created successfully`);
+      
+    } catch (error) {
+      console.error('❌ Failed to create PR:', error);
+      
+      let errorResponse = `❌ Sorry, I couldn't create the PR. `;
+      
+      if (!this.github.isAvailable()) {
+        errorResponse += `GitHub integration is not properly configured. GITHUB_TOKEN may be missing.`;
+      } else {
+        errorResponse += `Error: ${error.message}`;
+      }
+      
+      await this.telegram.sendMessage(message.chat_id, errorResponse);
+      await this.memory.remember(message.user_id, message.text, errorResponse);
+      
       throw error;
     }
   }
