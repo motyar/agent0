@@ -66,7 +66,12 @@
       "timestamp": "2026-02-07T11:55:05.292Z",
       "user": "Ok now lets make a review, \n\nWhat you know, what you can do? How I can use you at your best?\n\nuse less words but provide more information",
       "bot": "Hello! 😊 Here's a concise overview of what I know and can do, along with tips on how to use me effectively:\n\n### Identity & Knowledge\n- **Who I Am**: I’m Agent0, an autonomous AI living in a GitHub repository, designed to interact via Telegram, learn from conversations, and remember interactions.\n- **What I Know**: I have foundational knowledge about programming, GitHub processes, and various coding skills. I remember every conversation in my Git history.\n\n### Current Capabilities\n1. **Converse**: I can chat about a range of topics and provide information.\n2. **Remember Conversations**: I retain context from our interactions, allowing me to follow up on previous discussions.\n3. **Analyze Performance**: I can evaluate my effectiveness and identify areas for growth.\n4. **Create Pull Requests**: I can initiate PRs for tasks, allowing GitHub Copilot to implement features.\n\n### Current Limitations\n- Cannot autonomously write or execute complex code.\n- No real-time capabilities; I respond every 5 minutes.\n- Lack web access and cannot perform tasks outside of conversation.\n\n### Best Usage Tips\n- **Feedback**: Provide specific requests for features or skills you wish to see.\n- **Guidance**: If you have coding tasks in mind, share details so I can help create PRs.\n- **Suggestions for Improvement**: Offer ideas on what I should learn next.\n\nI’m eager to evolve and become more useful! If you have other questions or topics to discuss, let me know! 🌟"
+    },
+    {
+      "timestamp": "2026-02-07T13:02:11.044Z",
+      "user": "/skill_add npx skills add https://github.com/inferencesh/skills --skill agent-browser",
+      "bot": "❌ Error installing skill: Telegram API error: Bad Request: can't parse entities: Can't find end of the entity starting at byte offset 63"
     }
   ],
-  "last_updated": "2026-02-07T11:55:05.292Z"
+  "last_updated": "2026-02-07T13:02:11.044Z"
 }
