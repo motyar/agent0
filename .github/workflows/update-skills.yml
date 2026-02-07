@@ -1,0 +1,79 @@
+name: Update Skills
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight UTC
+  workflow_dispatch:  # Manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-skills:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Check for skill updates
+        id: check-updates
+        run: |
+          echo "Checking for skill updates..."
+          # This is a placeholder for future enhancement
+          # You can add logic here to:
+          # 1. Check if skills have newer versions
+          # 2. Update skills that have updates available
+          # 3. Test updated skills
+          
+          # For now, just check if skills directory exists
+          if [ -d "skills/managed" ]; then
+            echo "Skills directory exists"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "No skills directory"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit changes
+        if: steps.check-updates.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add skills/
+          git commit -m "chore: update skills from Skills.sh" || echo "No changes to commit"
+      
+      - name: Create Pull Request
+        if: steps.check-updates.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: 'chore: update skills from Skills.sh'
+          title: 'Update Skills from Skills.sh'
+          body: |
+            ## Skills Update
+            
+            This PR updates skills from Skills.sh directory.
+            
+            ### Changes
+            - Updated skill files in `skills/managed/`
+            
+            ### Testing
+            - [ ] Skills load correctly
+            - [ ] Agent initialization works
+            - [ ] Skills are properly injected into context
+            
+            This is an automated update. Please review changes before merging.
+          branch: update-skills
+          delete-branch: true
+          labels: |
+            skills
+            automated

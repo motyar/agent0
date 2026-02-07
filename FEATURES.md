@@ -68,6 +68,94 @@ Auto-discovery system for modular capabilities. Skills are automatically discove
 
 See [skills/README.md](skills/README.md) for detailed documentation.
 
+## Skills.sh System Integration
+
+Agent0 now supports Skills.sh integration for modular, reusable agent capabilities through SKILL.md files.
+
+### What are Skills.sh Skills?
+
+Skills.sh is an open directory for AI agent skills - packaged instructions, best practices, and automation that extend agent capabilities. Skills are typically stored as SKILL.md files and can be installed from the Skills.sh directory at https://skills.sh.
+
+### Available Commands
+
+Manage skills through Telegram bot commands:
+
+- `/skill_add owner/repo` - Install a skill from Skills.sh
+- `/skill_list` - List all installed Skills.sh skills  
+- `/skill_remove skill-name.md` - Remove a skill
+- `/skills_help` - Show skills help
+
+**Examples:**
+```
+/skill_add vercel/code-review
+/skill_list
+/skill_remove code-review.md
+```
+
+### How Skills Work
+
+1. **Storage**: Skills.sh skills (SKILL.md files) are stored in `skills/managed/` and `skills/workspace/` directories
+2. **Loading**: When the agent initializes, skills are loaded and parsed
+3. **Injection**: Skill instructions are injected into the agent's system prompt
+4. **Usage**: The agent uses skill instructions to enhance its responses
+5. **Management**: Skills can be dynamically added/removed through Telegram commands
+
+### Skill Directories
+
+- `skills/bundled/` - Built-in JavaScript skills (core, github, help)
+- `skills/managed/` - Skills.sh SKILL.md files installed from external sources
+- `skills/workspace/` - Custom SKILL.md files specific to your workspace
+
+### Example Skills from Skills.sh
+
+- Code review best practices
+- Deployment automation
+- API integration patterns
+- Communication templates
+- Documentation generation
+- And thousands more at https://skills.sh
+
+### For Developers
+
+```javascript
+import SkillManager from './src/skillManager.js';
+
+const skillManager = new SkillManager();
+
+// Ensure directories exist
+await skillManager.ensureDirectories();
+
+// Load all SKILL.md files
+const skills = await skillManager.loadSkills();
+
+// Install new skill from Skills.sh
+await skillManager.installSkill('owner/repo');
+
+// Get skills context for agent prompts
+const context = await skillManager.getSkillsContext();
+
+// List installed skills
+const list = await skillManager.listSkills();
+
+// Remove a skill
+await skillManager.removeSkill('skill-name.md');
+```
+
+### Configuration
+
+Skills.sh integration is configured in `agents/agent0/config.json`:
+
+```json
+{
+  "skills": {
+    "enabled": true,
+    "directory": "./skills",
+    "autoload": true,
+    "sources": ["skills.sh"]
+  }
+}
+```
+
 ## Multi-Provider LLM
 
 Abstraction layer supporting multiple AI providers with a unified interface.
