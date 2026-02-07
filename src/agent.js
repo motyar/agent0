@@ -9,7 +9,6 @@ import Scheduler from './scheduler.js';
 import SkillsManager from './skills-manager.js';
 import SkillManager from './skillManager.js';
 import GitHubService from './github-service.js';
-import TaskParser from './task-parser.js';
 
 class Agent0 {
   constructor() {
@@ -23,11 +22,76 @@ class Agent0 {
     this.skills = new SkillsManager();
     this.skillManager = new SkillManager('./skills');
     this.github = new GitHubService();
-    this.taskParser = new TaskParser();
 
     this.identity = null;
     this.soul = null;
     this.skillsContext = '';
+    
+    // Define tools for OpenAI function calling
+    this.tools = [
+      {
+        type: 'function',
+        function: {
+          name: 'install_skill',
+          description: 'Install a skill from Skills.sh repository. Skills extend the agent\'s capabilities with new instructions and best practices.',
+          parameters: {
+            type: 'object',
+            properties: {
+              ownerRepo: {
+                type: 'string',
+                description: 'Repository in format "owner/repo", e.g., "vercel/code-review"'
+              }
+            },
+            required: ['ownerRepo']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'list_skills',
+          description: 'List all installed Skills.sh skills. Shows the skills currently available to the agent.',
+          parameters: {
+            type: 'object',
+            properties: {}
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'remove_skill',
+          description: 'Remove an installed skill by its filename. This uninstalls the skill from the agent.',
+          parameters: {
+            type: 'object',
+            properties: {
+              skillName: {
+                type: 'string',
+                description: 'Name of the skill file to remove, e.g., "code-review.md"'
+              }
+            },
+            required: ['skillName']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'create_pr',
+          description: 'Create a pull request for a task. The PR will be created for GitHub Copilot agents to implement.',
+          parameters: {
+            type: 'object',
+            properties: {
+              taskDescription: {
+                type: 'string',
+                description: 'Description of the task to implement, must be at least 10 characters'
+              }
+            },
+            required: ['taskDescription']
+          }
+        }
+      }
+    ];
   }
 
   async initialize() {
@@ -66,16 +130,11 @@ class Agent0 {
       ? `\n**AVAILABLE SKILLS FROM Skills.sh:**\n${this.skillsContext}\n\nYou can use these skills to enhance your responses and capabilities.\n` 
       : '';
     
-    const prompt = `You are Agent0, an autonomous AI agent running on GitHub Actions.
+    const systemPrompt = `You are Agent0, an autonomous AI agent running on GitHub Actions.
 
 **YOUR SOUL:**
 ${this.soul}
 ${skillsSection}
-**CONVERSATION HISTORY:**
-${conversationContext || 'No previous conversation'}
-
-**CURRENT MESSAGE:**
-User: ${message.text}
 
 **INSTRUCTIONS:**
 - Respond naturally and helpfully
@@ -83,6 +142,14 @@ User: ${message.text}
 - Be honest about your limitations
 - Keep responses concise (under 300 words)
 - Use your memory of past conversations
+- You have access to tools for skill management and PR creation
+- When users ask to install skills, list skills, remove skills, or create PRs, use the appropriate tools`;
+
+    const userPrompt = `**CONVERSATION HISTORY:**
+${conversationContext || 'No previous conversation'}
+
+**CURRENT MESSAGE:**
+User: ${message.text}
 
 Respond now:`;
 
@@ -92,19 +159,22 @@ Respond now:`;
     const modelName = (this.identity && this.identity.model && this.identity.model.name) || 'gpt-4o-mini';
     const maxTokens = (this.identity && this.identity.model && this.identity.model.max_tokens) || 512;
 
-    // Make direct API call with basic error handling
+    // Make API call with tool support
     try {
       const response = await this.openai.chat.completions.create({
         model: modelName,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        tools: this.tools,
+        tool_choice: 'auto',
         max_tokens: maxTokens
       });
 
-      const responseText = response.choices[0].message.content;
+      console.log(`Generated response (${response.usage?.total_tokens || 0} tokens)`);
 
-      console.log(`Generated response (${responseText.length} chars, ${response.usage?.total_tokens || 0} tokens)`);
-
-      return responseText;
+      return response.choices[0].message;
     } catch (error) {
       console.error('Error calling OpenAI API:', error.message);
       throw error;
@@ -176,36 +246,6 @@ Respond now:`;
       console.log(`\n📨 Processing message from @${message.username} (${message.user_id})`);
       console.log(`   Text: "${message.text}"`);
       
-      // Check for skill management commands
-      if (message.text.startsWith('/skill_add ')) {
-        await this.handleSkillAdd(message);
-        return;
-      }
-      
-      if (message.text === '/skill_list') {
-        await this.handleSkillList(message);
-        return;
-      }
-      
-      if (message.text.startsWith('/skill_remove ')) {
-        await this.handleSkillRemove(message);
-        return;
-      }
-      
-      if (message.text === '/skills_help') {
-        await this.handleSkillsHelp(message);
-        return;
-      }
-      
-      // Check if this is a PR creation request
-      const taskInfo = this.taskParser.parse(message.text);
-      
-      if (taskInfo.isPRRequest && this.github.isAvailable()) {
-        console.log('🔍 Detected PR creation request');
-        await this.handlePRRequest(message, taskInfo);
-        return;
-      }
-      
       // Load conversation history for this user
       const history = await this.memory.recall(message.user_id, 10);
       
@@ -220,15 +260,35 @@ Respond now:`;
         console.log('📚 No previous conversation history');
       }
       
-      // Generate response using think()
-      const response = await this.think(message, conversationContext);
+      // Generate response using think() - returns message object which may have tool_calls
+      const assistantMessage = await this.think(message, conversationContext);
+      
+      let finalResponse = '';
+      
+      // Check if LLM wants to call tools
+      if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+        console.log(`🔧 LLM requested ${assistantMessage.tool_calls.length} tool call(s)`);
+        
+        // Execute each tool call
+        const toolResults = [];
+        for (const toolCall of assistantMessage.tool_calls) {
+          const toolResult = await this.executeTool(toolCall, message);
+          toolResults.push(toolResult);
+        }
+        
+        // Generate final response based on tool results
+        finalResponse = await this.generateFinalResponse(message, conversationContext, assistantMessage, toolResults);
+      } else {
+        // No tool calls, use the content directly
+        finalResponse = assistantMessage.content || 'I apologize, but I wasn\'t sure how to respond to that. Could you try rephrasing your request or ask me to list my capabilities?';
+      }
       
       // Send response via Telegram
-      await this.telegram.sendMessage(message.chat_id, response);
+      await this.telegram.sendMessage(message.chat_id, finalResponse);
       console.log(`✅ Sent reply to @${message.username}`);
       
       // Save conversation to memory
-      await this.memory.remember(message.user_id, message.text, response);
+      await this.memory.remember(message.user_id, message.text, finalResponse);
       console.log(`💾 Saved conversation for user ${message.user_id}`);
       
     } catch (error) {
@@ -238,209 +298,242 @@ Respond now:`;
   }
 
   /**
-   * Handle PR creation request from bot
+   * Execute a tool call from the LLM
    */
-  async handlePRRequest(message, taskInfo) {
+  async executeTool(toolCall, message) {
+    const functionName = toolCall.function.name;
+    const args = JSON.parse(toolCall.function.arguments);
+    
+    console.log(`🔧 Executing tool: ${functionName}`, args);
+    
     try {
-      console.log('🚀 Creating PR for task request...');
+      let result;
       
-      // Validate task description
-      if (!this.taskParser.isValidTask(taskInfo.taskDescription)) {
-        const errorResponse = `I understand you want to create a PR, but the task description needs to be more specific. Please provide at least 10 characters describing what you want to implement.
+      switch (functionName) {
+        case 'install_skill':
+          result = await this.handleToolInstallSkill(args.ownerRepo);
+          break;
+          
+        case 'list_skills':
+          result = await this.handleToolListSkills();
+          break;
+          
+        case 'remove_skill':
+          result = await this.handleToolRemoveSkill(args.skillName);
+          break;
+          
+        case 'create_pr':
+          result = await this.handleToolCreatePR(message, args.taskDescription);
+          break;
+          
+        default:
+          result = { success: false, message: `Unknown tool: ${functionName}` };
+      }
+      
+      return {
+        tool_call_id: toolCall.id,
+        role: 'tool',
+        name: functionName,
+        content: JSON.stringify(result)
+      };
+    } catch (error) {
+      console.error(`❌ Error executing tool ${functionName}:`, error);
+      return {
+        tool_call_id: toolCall.id,
+        role: 'tool',
+        name: functionName,
+        content: JSON.stringify({ success: false, message: error.message })
+      };
+    }
+  }
 
-Example: "Create a PR to add a health check endpoint that returns server status"`;
-        
-        await this.telegram.sendMessage(message.chat_id, errorResponse);
-        await this.memory.remember(message.user_id, message.text, errorResponse);
-        return;
+  /**
+   * Generate final natural language response after tool execution
+   */
+  async generateFinalResponse(message, conversationContext, assistantMessage, toolResults) {
+    const modelName = (this.identity && this.identity.model && this.identity.model.name) || 'gpt-4o-mini';
+    const maxTokens = (this.identity && this.identity.model && this.identity.model.max_tokens) || 512;
+    
+    try {
+      // Build messages array for follow-up completion
+      const messages = [
+        {
+          role: 'system',
+          content: `You are Agent0. You just executed some tools. Now provide a natural, helpful response to the user based on the tool results. Be concise and friendly.`
+        },
+        {
+          role: 'user',
+          content: `User asked: ${message.text}`
+        },
+        {
+          role: 'assistant',
+          content: assistantMessage.content || null,
+          tool_calls: assistantMessage.tool_calls
+        },
+        ...toolResults
+      ];
+      
+      const response = await this.openai.chat.completions.create({
+        model: modelName,
+        messages: messages,
+        max_tokens: maxTokens
+      });
+      
+      return response.choices[0].message.content;
+    } catch (error) {
+      console.error('Error generating final response:', error);
+      // Fallback to a simple response based on tool results
+      const successfulTools = toolResults.filter(r => {
+        try {
+          const parsed = JSON.parse(r.content);
+          return parsed.success;
+        } catch {
+          return false;
+        }
+      });
+      
+      if (successfulTools.length > 0) {
+        return 'I\'ve completed the requested action successfully!';
+      } else {
+        return 'I encountered an issue while trying to complete your request.';
+      }
+    }
+  }
+
+  /**
+   * Tool handler: Install a skill
+   */
+  async handleToolInstallSkill(ownerRepo) {
+    try {
+      // Validate format before processing
+      const validPattern = /^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/;
+      if (!validPattern.test(ownerRepo)) {
+        return {
+          success: false,
+          message: 'Invalid repository format. Use: owner/repo'
+        };
+      }
+      
+      const success = await this.skillManager.installSkill(ownerRepo);
+      
+      if (success) {
+        // Reload skills context
+        this.skillsContext = await this.skillManager.getSkillsContext();
+        return {
+          success: true,
+          message: `Successfully installed skill: ${ownerRepo}`
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Failed to install skill. The repository may not exist or the skill format is invalid.'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: `Error installing skill: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Tool handler: List skills
+   */
+  async handleToolListSkills() {
+    try {
+      const skills = await this.skillManager.listSkills();
+      
+      return {
+        success: true,
+        skills: skills,
+        count: skills.length,
+        message: skills.length > 0 
+          ? `Found ${skills.length} installed skill(s)` 
+          : 'No Skills.sh skills installed yet'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Error listing skills: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Tool handler: Remove a skill
+   */
+  async handleToolRemoveSkill(skillName) {
+    try {
+      const success = await this.skillManager.removeSkill(skillName);
+      
+      if (success) {
+        // Reload skills context
+        this.skillsContext = await this.skillManager.getSkillsContext();
+        return {
+          success: true,
+          message: `Successfully removed skill: ${skillName}`
+        };
+      } else {
+        return {
+          success: false,
+          message: `Failed to remove skill: ${skillName}`
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: `Error removing skill: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Tool handler: Create PR
+   */
+  async handleToolCreatePR(message, taskDescription) {
+    try {
+      // Validate task description
+      if (!taskDescription || taskDescription.length < 10) {
+        return {
+          success: false,
+          message: 'Task description must be at least 10 characters long'
+        };
+      }
+      
+      if (taskDescription.length > 500) {
+        return {
+          success: false,
+          message: 'Task description is too long (max 500 characters)'
+        };
+      }
+      
+      if (!this.github.isAvailable()) {
+        return {
+          success: false,
+          message: 'GitHub integration is not properly configured. GITHUB_TOKEN may be missing.'
+        };
       }
 
       // Create the PR
       const result = await this.github.createTaskPR({
-        taskDescription: taskInfo.taskDescription,
+        taskDescription: taskDescription,
         requestedBy: message.username || message.first_name,
         userId: message.user_id
       });
 
-      // Send success response
-      const successResponse = `✅ **PR Created Successfully!**
-
-I've created a pull request for your task:
-
-**Task:** ${this.telegram.escapeMarkdown(taskInfo.taskDescription)}
-**PR:** [#${result.pr_number}](${this.telegram.escapeMarkdown(result.pr_url)})
-**Branch:** \`${this.telegram.escapeMarkdown(result.branch)}\`
-
-The PR is now ready for GitHub Copilot agents to work on. They will implement the task and push changes to the branch.
-
-You can track progress at: ${result.pr_url}`;
-
-      await this.telegram.sendMessage(message.chat_id, successResponse);
-      
-      // Save to memory
-      await this.memory.remember(message.user_id, message.text, successResponse);
-      
-      console.log(`✅ PR #${result.pr_number} created successfully`);
-      
+      return {
+        success: true,
+        pr_number: result.pr_number,
+        pr_url: result.pr_url,
+        branch: result.branch,
+        message: `PR #${result.pr_number} created successfully`
+      };
     } catch (error) {
-      console.error('❌ Failed to create PR:', error);
-      
-      let errorResponse = `❌ Sorry, I couldn't create the PR. `;
-      
-      if (!this.github.isAvailable()) {
-        errorResponse += `GitHub integration is not properly configured. GITHUB_TOKEN may be missing.`;
-      } else {
-        errorResponse += `Error: ${error.message}`;
-      }
-      
-      await this.telegram.sendMessage(message.chat_id, errorResponse);
-      await this.memory.remember(message.user_id, message.text, errorResponse);
-      
-      throw error;
-    }
-  }
-
-  /**
-   * Handle /skill_add command
-   */
-  async handleSkillAdd(message) {
-    try {
-      const args = message.text.split(' ');
-      if (args.length < 2) {
-        const response = 'Usage: /skill_add owner/repo\n\nExample: /skill_add username/my-skill\n\nBrowse available skills at https://skills.sh';
-        await this.telegram.sendMessage(message.chat_id, response);
-        await this.memory.remember(message.user_id, message.text, response);
-        return;
-      }
-      
-      const skillRepo = args[1];
-      
-      // Validate format before processing (basic check)
-      const validPattern = /^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/;
-      if (!validPattern.test(skillRepo)) {
-        const response = '❌ Invalid repository format. Use: owner/repo\n\nExample: /skill_add username/my-skill';
-        await this.telegram.sendMessage(message.chat_id, response);
-        await this.memory.remember(message.user_id, message.text, response);
-        return;
-      }
-      
-      await this.telegram.sendMessage(message.chat_id, `📦 Installing skill: ${this.telegram.escapeMarkdown(skillRepo)}...`);
-      
-      const success = await this.skillManager.installSkill(skillRepo);
-      
-      let response;
-      if (success) {
-        // Reload skills context
-        this.skillsContext = await this.skillManager.getSkillsContext();
-        response = `✅ Skill ${this.telegram.escapeMarkdown(skillRepo)} installed successfully!\n\nThe skill is now available and has been loaded into my context.`;
-      } else {
-        response = `❌ Failed to install skill. The repository may not exist or the skill format is invalid.`;
-      }
-      
-      await this.telegram.sendMessage(message.chat_id, response);
-      await this.memory.remember(message.user_id, message.text, response);
-      
-    } catch (error) {
-      console.error('❌ Error in handleSkillAdd:', error);
-      const response = `❌ Error installing skill: ${error.message}`;
-      await this.telegram.sendMessage(message.chat_id, response);
-      await this.memory.remember(message.user_id, message.text, response);
-    }
-  }
-
-  /**
-   * Handle /skill_list command
-   */
-  async handleSkillList(message) {
-    try {
-      const skills = await this.skillManager.listSkills();
-      
-      let response;
-      if (skills.length === 0) {
-        response = `No ${this.telegram.escapeMarkdown('Skills.sh')} skills installed yet.\n\nUse /skill_add to install skills from ${this.telegram.escapeMarkdown('Skills.sh')}.\n\nExample: /skill_add vercel/code-review`;
-      } else {
-        const list = skills.map(s => `• ${this.telegram.escapeMarkdown(s.name)} (${this.telegram.escapeMarkdown(s.type)})`).join('\n');
-        response = `📚 **Installed ${this.telegram.escapeMarkdown('Skills.sh')} Skills:**\n\n${list}\n\nTotal: ${skills.length} skill(s)`;
-      }
-      
-      await this.telegram.sendMessage(message.chat_id, response);
-      await this.memory.remember(message.user_id, message.text, response);
-      
-    } catch (error) {
-      console.error('❌ Error in handleSkillList:', error);
-      const response = `❌ Error listing skills: ${error.message}`;
-      await this.telegram.sendMessage(message.chat_id, response);
-      await this.memory.remember(message.user_id, message.text, response);
-    }
-  }
-
-  /**
-   * Handle /skill_remove command
-   */
-  async handleSkillRemove(message) {
-    try {
-      const args = message.text.split(' ');
-      if (args.length < 2) {
-        const response = 'Usage: /skill_remove skill-name.md\n\nExample: /skill_remove code-review.md';
-        await this.telegram.sendMessage(message.chat_id, response);
-        await this.memory.remember(message.user_id, message.text, response);
-        return;
-      }
-      
-      const skillName = args[1];
-      
-      const success = await this.skillManager.removeSkill(skillName);
-      
-      let response;
-      if (success) {
-        // Reload skills context
-        this.skillsContext = await this.skillManager.getSkillsContext();
-        response = `✅ Skill ${this.telegram.escapeMarkdown(skillName)} removed successfully!`;
-      } else {
-        response = `❌ Failed to remove skill.`;
-      }
-      
-      await this.telegram.sendMessage(message.chat_id, response);
-      await this.memory.remember(message.user_id, message.text, response);
-      
-    } catch (error) {
-      console.error('❌ Error in handleSkillRemove:', error);
-      const response = `❌ Error removing skill: ${error.message}`;
-      await this.telegram.sendMessage(message.chat_id, response);
-      await this.memory.remember(message.user_id, message.text, response);
-    }
-  }
-
-  /**
-   * Handle /skills_help command
-   */
-  async handleSkillsHelp(message) {
-    try {
-      const response = `📚 **${this.telegram.escapeMarkdown('Skills.sh')} Management Commands**
-
-/skill_add owner/repo - Install a skill from ${this.telegram.escapeMarkdown('Skills.sh')}
-/skill_list - List all installed skills
-/skill_remove name.md - Remove an installed skill
-/skills_help - Show this help message
-
-**Examples:**
-\`/skill_add username/my-skill\`
-\`/skill_list\`
-\`/skill_remove my-skill.md\`
-
-**About ${this.telegram.escapeMarkdown('Skills.sh')}:**
-${this.telegram.escapeMarkdown('Skills.sh')} is an open directory for AI agent skills - modular packages that extend agent capabilities. Skills are packaged as SKILL.md files with instructions and best practices.
-
-Browse available skills and learn more at https://skills.sh`;
-      
-      await this.telegram.sendMessage(message.chat_id, response);
-      await this.memory.remember(message.user_id, message.text, response);
-      
-    } catch (error) {
-      console.error('❌ Error in handleSkillsHelp:', error);
-      const response = `❌ Error showing help: ${error.message}`;
-      await this.telegram.sendMessage(message.chat_id, response);
-      await this.memory.remember(message.user_id, message.text, response);
+      return {
+        success: false,
+        message: `Error creating PR: ${error.message}`
+      };
     }
   }
 

@@ -50,14 +50,18 @@ Currently, I can:
 - ✅ Converse via Telegram
 - ✅ Remember past conversations
 - ✅ Load context from previous interactions
-- ✅ Think using Claude 3.5 Sonnet
-- ✅ Create pull requests for tasks (delegated to GitHub Copilot agents)
+- ✅ Think using OpenAI GPT models
+- ✅ Execute complex tools via natural language:
+  - Install skills from Skills.sh
+  - List installed skills
+  - Remove skills
+  - Create pull requests for tasks
+- ✅ Understand natural language commands and requests
 
 I cannot yet (but will learn):
 - ❌ Write new skills for myself
 - ❌ Self-improve autonomously
 - ❌ Search the web
-- ❌ Execute complex tools
 
 ## Current Goals
 
