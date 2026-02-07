@@ -43,7 +43,7 @@ class SkillManager {
       execSync(`npx -y skills add ${ownerRepo} --yes`, { 
         cwd: process.cwd(),
         stdio: 'inherit',
-        env: env
+        env
       });
       
       console.log(`✓ Installed skill: ${ownerRepo}`);
