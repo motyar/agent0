@@ -9,6 +9,7 @@
     "poll": "node src/telegram.js poll",
     "doctor": "node src/doctor.js",
     "fix": "node src/doctor.js fix",
+    "stats": "node src/agent.js stats",
     "test": "echo \"Tests coming soon\" && exit 0"
   },
   "keywords": [
