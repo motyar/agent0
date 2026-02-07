@@ -280,7 +280,7 @@ Respond now:`;
         finalResponse = await this.generateFinalResponse(message, conversationContext, assistantMessage, toolResults);
       } else {
         // No tool calls, use the content directly
-        finalResponse = assistantMessage.content || 'I apologize, but I was unable to generate a response.';
+        finalResponse = assistantMessage.content || 'I apologize, but I wasn\'t sure how to respond to that. Could you try rephrasing your request or ask me to list my capabilities?';
       }
       
       // Send response via Telegram
@@ -367,7 +367,7 @@ Respond now:`;
         },
         {
           role: 'assistant',
-          content: assistantMessage.content,
+          content: assistantMessage.content || null,
           tool_calls: assistantMessage.tool_calls
         },
         ...toolResults
