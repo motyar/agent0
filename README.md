@@ -119,6 +119,51 @@ Skills are organized in three categories:
 
 See [skills/README.md](skills/README.md) for details on creating skills.
 
+## 🎯 Skills.sh Integration
+
+Agent0 supports <a href="https://skills.sh">Skills.sh</a> for extending capabilities with community-driven skills.
+
+### Quick Start
+
+```bash
+# Install skills via Telegram
+/skill_add vercel/code-review
+/skill_list
+/skill_remove code-review.md
+
+# Or programmatically
+node -e "import('./src/skillManager.js').then(m => new m.default().installSkill('owner/repo'))"
+```
+
+### What Can Skills Do?
+
+Skills.sh skills are SKILL.md files containing instructions, best practices, and automation:
+
+- 🔍 Enhanced code review
+- 🚀 Deployment automation  
+- 💬 Better conversation patterns
+- 🛠️ Tool integration templates
+- 📝 Documentation generation
+- 🎨 Design patterns and best practices
+- And much more!
+
+Browse thousands of skills at <a href="https://skills.sh">skills.sh</a>
+
+### How It Works
+
+1. Install skills using `/skill_add owner/repo` command
+2. Skills (SKILL.md files) are stored in `skills/managed/` or `skills/workspace/`
+3. Agent loads skills at startup and injects them into its context
+4. Skills enhance the agent's knowledge and capabilities
+5. Manage skills dynamically through Telegram commands
+
+### Telegram Commands
+
+- `/skill_add owner/repo` - Install a skill from Skills.sh
+- `/skill_list` - List all installed skills
+- `/skill_remove skill-name.md` - Remove a skill
+- `/skills_help` - Show help and examples
+
 ### 🔧 Creating PRs via Bot
 
 You can ask Agent0 to create pull requests that will be executed by GitHub Copilot agents:

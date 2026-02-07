@@ -7,6 +7,7 @@ import TelegramService from './telegram.js';
 import MemoryEngine from './memory-engine.js';
 import Scheduler from './scheduler.js';
 import SkillsManager from './skills-manager.js';
+import SkillManager from './skillManager.js';
 import RetryPolicy from './retry-policy.js';
 import Monitor from './monitor.js';
 import SessionManager from './session-manager.js';
@@ -23,6 +24,7 @@ class Agent0 {
     this.memory = new MemoryEngine();
     this.scheduler = new Scheduler();
     this.skills = new SkillsManager();
+    this.skillManager = new SkillManager('./skills');
     this.retryPolicy = new RetryPolicy();
     this.monitor = new Monitor({ level: 'info' });
     this.sessionManager = new SessionManager();
@@ -31,6 +33,7 @@ class Agent0 {
 
     this.identity = null;
     this.soul = null;
+    this.skillsContext = '';
   }
 
   async initialize() {
@@ -46,10 +49,19 @@ class Agent0 {
     // Initialize subsystems
     await this.scheduler.initialize();
     await this.skills.initialize();
+    
+    // Initialize Skills.sh integration
+    await this.skillManager.ensureDirectories();
+    this.skillsContext = await this.skillManager.getSkillsContext();
+    
     this.registerHealthChecks();
 
     this.monitor.info(`Agent0 v${this.identity.version} ready`);
     this.monitor.info(`Soul loaded (${this.soul.length} characters)`);
+    
+    if (this.skillsContext) {
+      this.monitor.info(`Skills.sh integration loaded (${this.skillsContext.length} characters)`);
+    }
   }
 
   /**
@@ -74,11 +86,18 @@ class Agent0 {
   }
 
   async think(message, conversationContext) {
+    // Build skills section if skills are loaded
+    // Note: For large skill sets, consider implementing skill selection or pagination
+    // to prevent excessive prompt sizes. Current implementation injects all skills.
+    const skillsSection = this.skillsContext 
+      ? `\n**AVAILABLE SKILLS FROM Skills.sh:**\n${this.skillsContext}\n\nYou can use these skills to enhance your responses and capabilities.\n` 
+      : '';
+    
     const prompt = `You are Agent0, an autonomous AI agent running on GitHub Actions.
 
 **YOUR SOUL:**
 ${this.soul}
-
+${skillsSection}
 **CONVERSATION HISTORY:**
 ${conversationContext || 'No previous conversation'}
 
@@ -202,6 +221,27 @@ Respond now:`;
       console.log(`\n📨 Processing message from @${message.username} (${message.user_id})`);
       console.log(`   Text: "${message.text}"`);
       
+      // Check for skill management commands
+      if (message.text.startsWith('/skill_add ')) {
+        await this.handleSkillAdd(message);
+        return;
+      }
+      
+      if (message.text === '/skill_list') {
+        await this.handleSkillList(message);
+        return;
+      }
+      
+      if (message.text.startsWith('/skill_remove ')) {
+        await this.handleSkillRemove(message);
+        return;
+      }
+      
+      if (message.text === '/skills_help') {
+        await this.handleSkillsHelp(message);
+        return;
+      }
+      
       // Check if this is a PR creation request
       const taskInfo = this.taskParser.parse(message.text);
       
@@ -302,6 +342,150 @@ You can track progress at: ${result.pr_url}`;
       await this.memory.remember(message.user_id, message.text, errorResponse);
       
       throw error;
+    }
+  }
+
+  /**
+   * Handle /skill_add command
+   */
+  async handleSkillAdd(message) {
+    try {
+      const args = message.text.split(' ');
+      if (args.length < 2) {
+        const response = 'Usage: /skill_add owner/repo\n\nExample: /skill_add username/my-skill\n\nBrowse available skills at https://skills.sh';
+        await this.telegram.sendMessage(message.chat_id, response);
+        await this.memory.remember(message.user_id, message.text, response);
+        return;
+      }
+      
+      const skillRepo = args[1];
+      
+      // Validate format before processing (basic check)
+      const validPattern = /^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/;
+      if (!validPattern.test(skillRepo)) {
+        const response = '❌ Invalid repository format. Use: owner/repo\n\nExample: /skill_add username/my-skill';
+        await this.telegram.sendMessage(message.chat_id, response);
+        await this.memory.remember(message.user_id, message.text, response);
+        return;
+      }
+      
+      await this.telegram.sendMessage(message.chat_id, `📦 Installing skill: ${skillRepo}...`);
+      
+      const success = await this.skillManager.installSkill(skillRepo);
+      
+      let response;
+      if (success) {
+        // Reload skills context
+        this.skillsContext = await this.skillManager.getSkillsContext();
+        response = `✅ Skill ${skillRepo} installed successfully!\n\nThe skill is now available and has been loaded into my context.`;
+      } else {
+        response = `❌ Failed to install skill. The repository may not exist or the skill format is invalid.`;
+      }
+      
+      await this.telegram.sendMessage(message.chat_id, response);
+      await this.memory.remember(message.user_id, message.text, response);
+      
+    } catch (error) {
+      console.error('❌ Error in handleSkillAdd:', error);
+      const response = `❌ Error installing skill: ${error.message}`;
+      await this.telegram.sendMessage(message.chat_id, response);
+      await this.memory.remember(message.user_id, message.text, response);
+    }
+  }
+
+  /**
+   * Handle /skill_list command
+   */
+  async handleSkillList(message) {
+    try {
+      const skills = await this.skillManager.listSkills();
+      
+      let response;
+      if (skills.length === 0) {
+        response = 'No Skills.sh skills installed yet.\n\nUse /skill_add to install skills from Skills.sh.\n\nExample: /skill_add vercel/code-review';
+      } else {
+        const list = skills.map(s => `• ${s.name} (${s.type})`).join('\n');
+        response = `📚 **Installed Skills.sh Skills:**\n\n${list}\n\nTotal: ${skills.length} skill(s)`;
+      }
+      
+      await this.telegram.sendMessage(message.chat_id, response);
+      await this.memory.remember(message.user_id, message.text, response);
+      
+    } catch (error) {
+      console.error('❌ Error in handleSkillList:', error);
+      const response = `❌ Error listing skills: ${error.message}`;
+      await this.telegram.sendMessage(message.chat_id, response);
+      await this.memory.remember(message.user_id, message.text, response);
+    }
+  }
+
+  /**
+   * Handle /skill_remove command
+   */
+  async handleSkillRemove(message) {
+    try {
+      const args = message.text.split(' ');
+      if (args.length < 2) {
+        const response = 'Usage: /skill_remove skill-name.md\n\nExample: /skill_remove code-review.md';
+        await this.telegram.sendMessage(message.chat_id, response);
+        await this.memory.remember(message.user_id, message.text, response);
+        return;
+      }
+      
+      const skillName = args[1];
+      
+      const success = await this.skillManager.removeSkill(skillName);
+      
+      let response;
+      if (success) {
+        // Reload skills context
+        this.skillsContext = await this.skillManager.getSkillsContext();
+        response = `✅ Skill ${skillName} removed successfully!`;
+      } else {
+        response = `❌ Failed to remove skill.`;
+      }
+      
+      await this.telegram.sendMessage(message.chat_id, response);
+      await this.memory.remember(message.user_id, message.text, response);
+      
+    } catch (error) {
+      console.error('❌ Error in handleSkillRemove:', error);
+      const response = `❌ Error removing skill: ${error.message}`;
+      await this.telegram.sendMessage(message.chat_id, response);
+      await this.memory.remember(message.user_id, message.text, response);
+    }
+  }
+
+  /**
+   * Handle /skills_help command
+   */
+  async handleSkillsHelp(message) {
+    try {
+      const response = `📚 **Skills.sh Management Commands**
+
+/skill_add owner/repo - Install a skill from Skills.sh
+/skill_list - List all installed skills
+/skill_remove name.md - Remove an installed skill
+/skills_help - Show this help message
+
+**Examples:**
+\`/skill_add username/my-skill\`
+\`/skill_list\`
+\`/skill_remove my-skill.md\`
+
+**About Skills.sh:**
+Skills.sh is an open directory for AI agent skills - modular packages that extend agent capabilities. Skills are packaged as SKILL.md files with instructions and best practices.
+
+Browse available skills and learn more at https://skills.sh`;
+      
+      await this.telegram.sendMessage(message.chat_id, response);
+      await this.memory.remember(message.user_id, message.text, response);
+      
+    } catch (error) {
+      console.error('❌ Error in handleSkillsHelp:', error);
+      const response = `❌ Error showing help: ${error.message}`;
+      await this.telegram.sendMessage(message.chat_id, response);
+      await this.memory.remember(message.user_id, message.text, response);
     }
   }
 
