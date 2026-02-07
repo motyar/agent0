@@ -71,7 +71,17 @@
       "timestamp": "2026-02-07T13:02:11.044Z",
       "user": "/skill_add npx skills add https://github.com/inferencesh/skills --skill agent-browser",
       "bot": "❌ Error installing skill: Telegram API error: Bad Request: can't parse entities: Can't find end of the entity starting at byte offset 63"
+    },
+    {
+      "timestamp": "2026-02-07T13:32:30.392Z",
+      "user": "/skill_add npx skills add inferencesh/skills --skill agent-browser",
+      "bot": "❌ Error installing skill: Telegram API error: Bad Request: can't parse entities: Can't find end of the entity starting at byte offset 63"
+    },
+    {
+      "timestamp": "2026-02-07T13:32:30.730Z",
+      "user": "/skill_add npx skills add inferencesh/skills --skill agent-browser",
+      "bot": "❌ Error installing skill: Telegram API error: Bad Request: can't parse entities: Can't find end of the entity starting at byte offset 63"
     }
   ],
-  "last_updated": "2026-02-07T13:02:11.044Z"
+  "last_updated": "2026-02-07T13:32:30.730Z"
 }

@@ -1,18 +1,30 @@
 {
-  "last_update_id": 517942724,
-  "last_poll": "2026-02-07T13:02:09.681Z",
+  "last_update_id": 517942726,
+  "last_poll": "2026-02-07T13:32:28.840Z",
   "messages": [
     {
-      "update_id": 517942724,
-      "message_id": 2615,
+      "update_id": 517942725,
+      "message_id": 2617,
       "user_id": 3181434,
       "username": "motyar",
       "first_name": "Motyar",
-      "text": "/skill_add npx skills add https://github.com/inferencesh/skills --skill agent-browser",
-      "timestamp": "2026-02-07T13:00:46.000Z",
+      "text": "/skill_add npx skills add inferencesh/skills --skill agent-browser",
+      "timestamp": "2026-02-07T13:22:55.000Z",
       "chat_id": 3181434,
       "status": "processed",
-      "processed_at": "2026-02-07T13:02:11.046Z"
+      "processed_at": "2026-02-07T13:32:30.393Z"
+    },
+    {
+      "update_id": 517942726,
+      "message_id": 2620,
+      "user_id": 3181434,
+      "username": "motyar",
+      "first_name": "Motyar",
+      "text": "/skill_add npx skills add inferencesh/skills --skill agent-browser",
+      "timestamp": "2026-02-07T13:31:11.000Z",
+      "chat_id": 3181434,
+      "status": "processed",
+      "processed_at": "2026-02-07T13:32:30.731Z"
     }
   ]
 }
