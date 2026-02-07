@@ -104,6 +104,71 @@ class GitHubService {
   }
 
   /**
+   * Create an initial commit on a branch
+   * This ensures the branch has at least one commit different from base
+   */
+  async createInitialCommit(branchName, taskDescription) {
+    this.logger.info(`Creating initial commit on branch: ${branchName}`);
+
+    // Get the current commit SHA of the branch
+    const branchRef = await this.api(`/repos/${this.owner}/${this.repo}/git/ref/heads/${branchName}`);
+    const branchSha = branchRef.object.sha;
+
+    // Get the tree for the current commit
+    const commit = await this.api(`/repos/${this.owner}/${this.repo}/git/commits/${branchSha}`);
+    const baseTreeSha = commit.tree.sha;
+
+    // Sanitize task description to prevent any issues
+    const sanitizedDescription = taskDescription
+      .replace(/[<>]/g, '') // Remove angle brackets
+      .trim();
+
+    // Create a new blob for the task metadata file
+    const timestamp = new Date().toISOString();
+    const taskMetadata = `# Task Request
+
+**Description:** ${sanitizedDescription}
+**Created:** ${timestamp}
+**Status:** Pending
+
+This file was automatically created by Agent0 to initialize the task branch.
+GitHub requires at least one commit difference to create a pull request.
+`;
+
+    const blob = await this.api(`/repos/${this.owner}/${this.repo}/git/blobs`, 'POST', {
+      content: Buffer.from(taskMetadata).toString('base64'),
+      encoding: 'base64'
+    });
+
+    // Create a new tree with the task metadata file
+    const tree = await this.api(`/repos/${this.owner}/${this.repo}/git/trees`, 'POST', {
+      base_tree: baseTreeSha,
+      tree: [{
+        path: '.tasks/TASK_METADATA.md',
+        mode: '100644',
+        type: 'blob',
+        sha: blob.sha
+      }]
+    });
+
+    // Create a new commit
+    const newCommit = await this.api(`/repos/${this.owner}/${this.repo}/git/commits`, 'POST', {
+      message: `Initialize task branch\n\n${sanitizedDescription}`,
+      tree: tree.sha,
+      parents: [branchSha]
+    });
+
+    // Update the branch reference to point to the new commit
+    await this.api(`/repos/${this.owner}/${this.repo}/git/refs/heads/${branchName}`, 'PATCH', {
+      sha: newCommit.sha,
+      force: false
+    });
+
+    this.logger.info(`Initial commit created on branch: ${branchName}`);
+    return newCommit;
+  }
+
+  /**
    * Add labels to a pull request
    */
   async addLabels(prNumber, labels) {
@@ -132,6 +197,9 @@ class GitHubService {
     try {
       // Create branch
       await this.createBranch(branchName);
+
+      // Create initial commit on the branch to ensure there's a difference from main
+      await this.createInitialCommit(branchName, taskDescription);
 
       // Create PR with detailed description for Copilot
       const prTitle = `Bot Task: ${taskDescription}`;
