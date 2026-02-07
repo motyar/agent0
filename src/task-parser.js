@@ -10,15 +10,25 @@ class TaskParser {
     this.logger = new Logger({ level: 'info' });
     
     // Patterns that indicate a PR creation request
+    // Note: Some patterns have optional capture groups (.+)? to match questions like
+    // "can you create a pr?" without a task description. These will be caught by 
+    // validation later, prompting the user to provide a specific task.
     this.prPatterns = [
+      // Standard patterns with required task descriptions
       /create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
       /make\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
       /open\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
       /create\s+(?:a\s+)?pull\s+request\s+(?:to\s+)?(.+)/i,
       /make\s+(?:a\s+)?pull\s+request\s+(?:to\s+)?(.+)/i,
-      /can\s+you\s+create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
-      /could\s+you\s+create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
-      /please\s+create\s+(?:a\s+)?pr\s+(?:to\s+)?(.+)/i,
+      
+      // Polite request patterns
+      /^(?:can|could|please)\s+(?:you\s+)?create\s+(?:a\s+)?pr(?:\s+(?:to|for)\s+(.+))?[?!.]*$/i,
+      
+      // Question patterns (allowing filler words like "so" at the start)
+      /^(?:so\s+)?(?:are\s+you\s+)?(?:able\s+to\s+)?create\s+(?:a\s+)?pr(?:\s+(?:for|to)\s+(.+))?[?!.]*$/i,
+      
+      // Start patterns (allowing filler words like "so" at the start)
+      /^(?:so\s+)?(?:can\s+you\s+)?start\s+(?:a\s+)?(?:demo\s+)?pr(?:\s+(?:to\s+)?(.+))?[?!.]*$/i,
     ];
 
     // Keywords that suggest a task/PR request
@@ -53,6 +63,8 @@ class TaskParser {
 
   /**
    * Extract task description from PR request
+   * Returns null if no valid task description is found, which will trigger
+   * validation error asking user to provide a specific task.
    */
   extractTaskDescription(text) {
     if (!text) return null;
@@ -63,15 +75,29 @@ class TaskParser {
     for (const pattern of this.prPatterns) {
       const match = lowerText.match(pattern);
       if (match && match[1]) {
-        return match[1].trim();
+        let extracted = match[1].trim();
+        
+        // If empty after trim, continue to next pattern
+        if (extracted.length === 0) {
+          continue;
+        }
+        
+        // Clean up common phrases that aren't real task descriptions
+        // Remove prefixed references like "for this repo", "in this repository", etc.
+        // This allows "for this repo add feature" → "add feature"
+        // Note: Pattern doesn't anchor to end ($) to allow task description after the reference
+        // Note: "repository" comes before "repo" to match the longer string first
+        const cleanupPattern = /^(?:for|on|in|to)?\s*(?:this|the)\s+(?:repository|repo)[?!.]*/i;
+        extracted = extracted.replace(cleanupPattern, '').trim();
+        
+        // If we still have content after cleanup, return it
+        if (extracted.length > 0) {
+          return extracted;
+        }
       }
     }
 
-    // If no pattern matches but it's a PR request, return full text
-    if (this.isPRRequest(text)) {
-      return text;
-    }
-
+    // If no valid task extracted, return null to trigger validation error
     return null;
   }
 

@@ -10,7 +10,7 @@
     "conversation": true,
     "memory": true,
     "learning": true,
-    "code_generation": false,
+    "code_generation": true,
     "self_improvement": false
   },
   "stats": {
