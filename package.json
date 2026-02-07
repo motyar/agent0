@@ -23,7 +23,9 @@
     "openai": "^4.0.0",
     "cron": "^3.1.7",
     "@octokit/rest": "^20.0.2",
-    "@anthropic-ai/sdk": "^0.32.0"
+    "@anthropic-ai/sdk": "^0.32.0",
+    "chokidar": "^3.5.3",
+    "@sinclair/typebox": "^0.32.0"
   },
   "engines": {
     "node": ">=22.0.0"
