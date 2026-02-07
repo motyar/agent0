@@ -42,20 +42,29 @@ Agent0 now supports Skills.sh integration for modular, reusable agent capabiliti
 
 Skills.sh is an open directory for AI agent skills - packaged instructions, best practices, and automation that extend agent capabilities. Skills are typically stored as SKILL.md files and can be installed from the Skills.sh directory at https://skills.sh.
 
-### Available Commands
+### Natural Language Management
 
-Manage skills through Telegram bot commands:
+Manage skills through natural conversation with the agent:
 
-- `/skill_add owner/repo` - Install a skill from Skills.sh
-- `/skill_list` - List all installed Skills.sh skills  
-- `/skill_remove skill-name.md` - Remove a skill
-- `/skills_help` - Show skills help
-
-**Examples:**
+**Installing Skills:**
 ```
-/skill_add vercel/code-review
-/skill_list
-/skill_remove code-review.md
+You: Install the vercel/code-review skill
+Agent0: I've successfully installed the vercel/code-review skill! 
+        It's now available and loaded into my context.
+```
+
+**Listing Skills:**
+```
+You: What skills do you have?
+Agent0: I currently have 2 skills installed:
+        • code-review.md (managed)
+        • example-skill.md (workspace)
+```
+
+**Removing Skills:**
+```
+You: Remove the code-review.md skill
+Agent0: I've successfully removed the code-review.md skill!
 ```
 
 ### How Skills Work
@@ -64,7 +73,7 @@ Manage skills through Telegram bot commands:
 2. **Loading**: When the agent initializes, skills are loaded and parsed
 3. **Injection**: Skill instructions are injected into the agent's system prompt
 4. **Usage**: The agent uses skill instructions to enhance its responses
-5. **Management**: Skills can be dynamically added/removed through Telegram commands
+5. **Management**: Skills can be dynamically added/removed through natural language conversation
 
 ### Skill Directories
 
@@ -188,36 +197,32 @@ console.log(`Cost: $${result.cost.toFixed(4)}`);
 
 ## PR Creation via Bot
 
-Create pull requests directly from Telegram bot messages for execution by GitHub Copilot agents.
+Create pull requests directly through natural language conversation with the agent.
 
 ### How It Works
 
-1. **Send a Task Request**: Message the bot with your task
+1. **Send a Task Request**: Ask the agent to create a PR in natural language
 2. **PR Creation**: Bot automatically creates a branch and pull request
 3. **Copilot Execution**: GitHub Copilot agents execute the task
 
 ### Usage
 
-**Supported Commands**:
-- `create a PR to [task]`
-- `make a PR to [task]`
-- `create a pull request to [task]`
-- `can you create a PR to [task]`
-- `please create a PR to [task]`
-
-**Examples**:
+**Natural Language Examples**:
 ```
-You: create a PR to add a health check endpoint
-Bot: ✅ PR Created Successfully!
-     PR: #123
-     Branch: bot-task/add-a-health-check-endpoint-1234567890
+You: Create a PR to add a health check endpoint
+Agent0: ✅ I've created PR #123 for your task! 
+        You can track progress at: [PR URL]
 ```
 
 ```
-You: make a PR to fix authentication bug in login flow
-Bot: ✅ PR Created Successfully!
-     PR: #124
-     Branch: bot-task/fix-authentication-bug-in-login-flow-1234567891
+You: Make a PR to fix authentication bug in login flow
+Agent0: ✅ I've created PR #124 successfully!
+        The PR is ready for GitHub Copilot agents to work on.
+```
+
+```
+You: Please create a pull request to improve error handling
+Agent0: ✅ I've created PR #125 for you!
 ```
 
 ### Requirements
@@ -254,10 +259,10 @@ permissions:
 
 **Core Files**:
 - `src/github-service.js` - GitHub API integration
-- `src/task-parser.js` - Parse task requests from messages
-- `src/agent.js` - Handle PR creation in message processing
+- `src/agent.js` - Handle PR creation via OpenAI tool calling
 
 **Features**:
+- Natural language understanding via OpenAI function calling
 - Automatic branch creation from main
 - Sanitized branch names
 - Detailed PR descriptions for Copilot

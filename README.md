@@ -100,11 +100,17 @@ Agent0: Yes! Last time you asked me about...
 
 ### 🎯 Skills System
 
-Agent0 has a modular skills system that automatically discovers and executes capabilities:
+Agent0 has a modular skills system that can be managed through natural language:
 
 ```
-You: Use the help skill to learn about available commands
-Agent0: Here are the available topics: skills, commands, setup...
+You: Install the vercel/code-review skill
+Agent0: I've successfully installed the vercel/code-review skill! It's now available and loaded into my context.
+
+You: What skills do you have installed?
+Agent0: I currently have 3 skills installed: code-review.md, api-integration.md, and deploy.md
+
+You: Remove the api-integration.md skill
+Agent0: I've successfully removed the api-integration.md skill!
 ```
 
 Skills are organized in three categories:
@@ -118,16 +124,19 @@ See [skills/README.md](skills/README.md) for details on creating skills.
 
 Agent0 supports <a href="https://skills.sh">Skills.sh</a> for extending capabilities with community-driven skills.
 
-### Quick Start
+### Natural Language Skill Management
 
-```bash
-# Install skills via Telegram
-/skill_add vercel/code-review
-/skill_list
-/skill_remove code-review.md
+Skills can be managed through natural conversation with the agent:
 
-# Or programmatically
-node -e "import('./src/skillManager.js').then(m => new m.default().installSkill('owner/repo'))"
+```
+You: Install the vercel/code-review skill from Skills.sh
+Agent0: I've successfully installed the vercel/code-review skill!
+
+You: Show me what skills are installed
+Agent0: I have 2 skills installed: code-review.md (managed) and example-skill.md (workspace)
+
+You: Remove the code-review.md skill
+Agent0: Successfully removed the code-review.md skill!
 ```
 
 ### What Can Skills Do?
@@ -146,18 +155,11 @@ Browse thousands of skills at <a href="https://skills.sh">skills.sh</a>
 
 ### How It Works
 
-1. Install skills using `/skill_add owner/repo` command
+1. Ask the agent to install skills using natural language (e.g., "install the vercel/code-review skill")
 2. Skills (SKILL.md files) are stored in `skills/managed/` or `skills/workspace/`
 3. Agent loads skills at startup and injects them into its context
 4. Skills enhance the agent's knowledge and capabilities
-5. Manage skills dynamically through Telegram commands
-
-### Telegram Commands
-
-- `/skill_add owner/repo` - Install a skill from Skills.sh
-- `/skill_list` - List all installed skills
-- `/skill_remove skill-name.md` - Remove a skill
-- `/skills_help` - Show help and examples
+5. Manage skills dynamically through natural conversation
 
 ### 🔧 Creating PRs via Bot
 
@@ -165,29 +167,19 @@ You can ask Agent0 to create pull requests that will be executed by GitHub Copil
 
 ```
 You: Create a PR to improve error handling
-Agent0: ✅ PR Created Successfully!
-        PR: #123
-        Branch: bot-task/improve-error-handling-1234567890
-        The PR is now ready for GitHub Copilot agents to work on.
+Agent0: ✅ I've created PR #123 for your task! The PR is ready for GitHub 
+        Copilot agents to work on. You can track progress at: [PR URL]
 
 You: Make a PR to add authentication
-Agent0: ✅ PR Created Successfully!
-        ...
+Agent0: ✅ I've created PR #124 successfully! ...
 ```
 
-**Supported formats:**
-- "create a PR to [task description]"
-- "make a PR to [task description]"
-- "create a pull request to [task description]"
-- "can you create a PR to [task description]"
-- "please create a PR to [task description]"
-
-The bot will:
+The agent understands natural language requests for PR creation and will:
 1. Parse your task request
 2. Create a new branch
 3. Create a pull request with detailed instructions
 4. Label it for Copilot agent execution
-5. Return the PR link to you
+5. Provide you with the PR link
 
 ## 🧠 How Memory Works
 
