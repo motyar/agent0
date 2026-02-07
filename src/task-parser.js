@@ -79,15 +79,8 @@ class TaskParser {
         
         // Clean up common phrases that aren't real task descriptions
         // Remove variations of "this repo", "the repo", etc.
-        const cleanupPatterns = [
-          /^for\s+(this|the)\s+repo[?!.]*/i,
-          /^(this|the)\s+repo[?!.]*/i,
-          /^on\s+(this|the)\s+repo[?!.]*/i,
-        ];
-        
-        for (const cleanupPattern of cleanupPatterns) {
-          extracted = extracted.replace(cleanupPattern, '').trim();
-        }
+        const cleanupPattern = /^(?:for|on)?\s*(this|the)\s+repo[?!.]*/i;
+        extracted = extracted.replace(cleanupPattern, '').trim();
         
         // If we still have content after cleanup, return it
         if (extracted.length > 0) {
