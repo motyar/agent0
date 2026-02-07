@@ -2,6 +2,19 @@
 # yarn lockfile v1
 
 
+"@anthropic-ai/sdk@^0.32.0":
+  version "0.32.1"
+  resolved "https://registry.npmjs.org/@anthropic-ai/sdk/-/sdk-0.32.1.tgz"
+  integrity sha512-U9JwTrDvdQ9iWuABVsMLj8nJVwAyQz6QXvgLsVhryhCEPkLsbcP/MXxm+jYcAwLoV8ESbaTTjnD4kuAFa+Hyjg==
+  dependencies:
+    "@types/node" "^18.11.18"
+    "@types/node-fetch" "^2.6.4"
+    abort-controller "^3.0.0"
+    agentkeepalive "^4.2.1"
+    form-data-encoder "1.7.2"
+    formdata-node "^4.3.2"
+    node-fetch "^2.6.7"
+
 "@cypress/request-promise@^5.0.0":
   version "5.0.0"
   resolved "https://registry.npmjs.org/@cypress/request-promise/-/request-promise-5.0.0.tgz"

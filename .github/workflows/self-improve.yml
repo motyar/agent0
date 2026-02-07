@@ -68,29 +68,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ANALYSIS_FILE="${{ steps.check_analysis.outputs.analysis_file }}"
-          
-          # Extract suggestions from analysis
-          SUGGESTIONS=$(cat "$ANALYSIS_FILE" | jq -r '.suggestions[] | "- **\(.title // "Improvement")** (\(.priority // "Medium") priority)\n  \(.description // "No description")\n"' || echo "Analysis completed. Review $ANALYSIS_FILE for details.")
-          
-          # Create issue with suggestions
-          gh issue create \
-            --title "🌟 Self-Improvement Analysis: $(date +%Y-%m-%d)" \
-            --label "enhancement,self-improvement" \
-            --body "## Self-Improvement Analysis Results
-
-Agent0 has completed its daily self-improvement analysis. Here are the key findings:
-
-## Improvement Suggestions
-
-$SUGGESTIONS
-
-## Full Analysis
-
-Review the complete analysis at: \`$ANALYSIS_FILE\`
-
----
-*This issue was automatically created by the self-improvement workflow.*
-" || echo "Failed to create issue"
+          ISSUE_BODY="Self-improvement analysis completed. Check $ANALYSIS_FILE for details."
+          gh issue create --title "🌟 Self-Improvement Analysis: $(date +%Y-%m-%d)" --label "enhancement,self-improvement" --body "$ISSUE_BODY" || echo "Failed to create issue"
       
       - name: Notify completion
         run: |
