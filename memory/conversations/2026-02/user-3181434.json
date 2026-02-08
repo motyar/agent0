@@ -131,7 +131,12 @@
       "timestamp": "2026-02-08T03:47:08.778Z",
       "user": "What are the issue",
       "bot": "It seems that I've been encountering issues while trying to install the `vercel/code-review` skill. Here are the main points regarding the problems:\n\n1. **Repository Existence**: There might be a possibility that the `vercel/code-review` repository does not exist at the specified location.\n2. **Invalid Format**: The format of the skill or the way it’s being requested could be incorrect, leading to installation errors.\n3. **Repeated Attempts**: Despite several attempts to install the skill, the errors persist, suggesting a need to verify the repository details.\n\nIf you can confirm the repository's name or provide alternative skills, I'll gladly attempt to install again! Let me know how you'd like to proceed!"
+    },
+    {
+      "timestamp": "2026-02-08T13:34:50.999Z",
+      "user": "Ok can you try again the installation? and if that don't work, generate PR to fix that.\n\nMake sure you assign the claud code agent to finish the job",
+      "bot": "I tried to install the skill, but it failed due to an issue with the repository or the skill format. However, I successfully created a PR to address this installation issue. You can view it [here](https://github.com/motyar/agent0/pull/31). The development team can now review and merge it to fix the problem. Let me know if you need anything else!"
     }
   ],
-  "last_updated": "2026-02-08T03:47:08.778Z"
+  "last_updated": "2026-02-08T13:34:50.999Z"
 }
