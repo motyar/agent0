@@ -28,12 +28,22 @@ class SkillManager {
       
       console.log(`📦 Installing skill: ${ownerRepo}...`);
       
-      // Use npx skills CLI
+      // Prepare environment with GH_TOKEN for authentication
+      // The skills CLI and gh may expect GH_TOKEN instead of GITHUB_TOKEN
+      const env = { ...process.env };
+      if (process.env.GITHUB_TOKEN && !env.GH_TOKEN) {
+        env.GH_TOKEN = process.env.GITHUB_TOKEN;
+      }
+      
+      // Use npx skills CLI with non-interactive flags
+      // -y flag for npx to auto-install without prompts
+      // --yes flag for skills CLI to avoid interactive prompts
       // Note: Input is validated above, but for enhanced security in future versions,
       // consider using execFile or spawn with array arguments instead of shell string
-      execSync(`npx skills add ${ownerRepo}`, { 
+      execSync(`npx -y skills add ${ownerRepo} --yes`, { 
         cwd: process.cwd(),
-        stdio: 'inherit' 
+        stdio: 'inherit',
+        env
       });
       
       console.log(`✓ Installed skill: ${ownerRepo}`);
