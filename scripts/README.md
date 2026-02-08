@@ -24,7 +24,7 @@ bash scripts/setup-skills.sh
 - After cloning the repository
 - To verify skills installation
 
-Note: The GitHub Actions workflow automatically runs this setup on every agent execution, so manual setup is optional for production use.
+Note: The GitHub Actions workflow automatically ensures find-skills is installed before each agent execution, so manual setup is optional for production use.
 
 ## Skills Directories
 

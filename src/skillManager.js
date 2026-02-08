@@ -116,13 +116,13 @@ class SkillManager {
             });
           } catch (error) {
             // SKILL.md might not exist in this directory
-            console.log(`⚠️  Skipping ${dir.name}: ${error.message}`);
+            console.log(`⚠️  No SKILL.md found in ${dir.name}`);
           }
         }
       }
     } catch (error) {
-      // .agents/skills directory might not exist yet
-      console.log(`⚠️  Skipping .agents/skills directory: ${error.message}`);
+      // .agents/skills directory might not exist yet - this is expected on first run
+      console.log(`⚠️  Skills CLI directory not found (.agents/skills) - will be created when skills are installed`);
     }
     
     return skills;
