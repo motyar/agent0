@@ -1,18 +1,18 @@
 {
-  "last_update_id": 517942736,
-  "last_poll": "2026-02-08T03:47:05.529Z",
+  "last_update_id": 517942737,
+  "last_poll": "2026-02-08T11:45:25.586Z",
   "messages": [
     {
-      "update_id": 517942736,
-      "message_id": 2650,
+      "update_id": 517942737,
+      "message_id": 2652,
       "user_id": 3181434,
       "username": "motyar",
       "first_name": "Motyar",
-      "text": "What are the issue",
-      "timestamp": "2026-02-08T03:03:01.000Z",
+      "text": "can you try again, remember that the skill path isn't always username/reponame format, find research about it and fix it",
+      "timestamp": "2026-02-08T11:43:22.000Z",
       "chat_id": 3181434,
-      "status": "processed",
-      "processed_at": "2026-02-08T03:47:09.755Z"
+      "status": "failed",
+      "error": "fetch failed"
     }
   ]
 }
