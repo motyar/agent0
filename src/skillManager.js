@@ -200,7 +200,16 @@ class SkillManager {
       const agentsSkillsPath = path.join('.agents/skills', skillName);
       try {
         await fs.access(agentsSkillsPath);
+        
+        // Validate skillName to prevent command injection
+        // Only allow alphanumeric characters, hyphens, and underscores
+        const validSkillNamePattern = /^[a-zA-Z0-9_-]+$/;
+        if (!validSkillNamePattern.test(skillName)) {
+          throw new Error('Invalid skill name: must contain only alphanumeric characters, hyphens, or underscores');
+        }
+        
         // Use npx skills remove to properly uninstall
+        // Input is validated above to prevent command injection
         execSync(`npx -y skills remove ${skillName} --yes`, {
           cwd: process.cwd(),
           stdio: 'inherit'
