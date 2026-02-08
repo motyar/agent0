@@ -42,9 +42,26 @@ Agent0 now supports Skills.sh integration for modular, reusable agent capabiliti
 
 Skills.sh is an open directory for AI agent skills - packaged instructions, best practices, and automation that extend agent capabilities. Skills are typically stored as SKILL.md files and can be installed from the Skills.sh directory at https://skills.sh.
 
+### Pre-installed Skills
+
+Agent0 comes with the **find-skills** skill from vercel-labs/skills pre-installed. This skill helps you discover and install additional skills from the open agent skills ecosystem.
+
+The find-skills skill is automatically installed when the agent starts up and enables you to:
+- Search for skills by keyword or domain
+- Discover skills for common tasks
+- Get recommendations for extending agent capabilities
+
 ### Natural Language Management
 
 Manage skills through natural conversation with the agent:
+
+**Finding Skills:**
+```
+You: How do I improve React performance?
+Agent0: I found a skill that might help! The "vercel-react-best-practices" skill 
+        provides React and Next.js performance optimization guidelines from Vercel.
+        Would you like me to install it?
+```
 
 **Installing Skills:**
 ```
@@ -56,7 +73,8 @@ Agent0: I've successfully installed the vercel/code-review skill!
 **Listing Skills:**
 ```
 You: What skills do you have?
-Agent0: I currently have 2 skills installed:
+Agent0: I currently have 3 skills installed:
+        • find-skills (skills-cli) - pre-installed
         • code-review.md (managed)
         • example-skill.md (workspace)
 ```
@@ -69,15 +87,17 @@ Agent0: I've successfully removed the code-review.md skill!
 
 ### How Skills Work
 
-1. **Storage**: Skills.sh skills (SKILL.md files) are stored in `skills/managed/` and `skills/workspace/` directories
-2. **Loading**: When the agent initializes, skills are loaded and parsed
-3. **Injection**: Skill instructions are injected into the agent's system prompt
-4. **Usage**: The agent uses skill instructions to enhance its responses
-5. **Management**: Skills can be dynamically added/removed through natural language conversation
+1. **Pre-installation**: The find-skills skill is automatically installed via GitHub Actions workflow
+2. **Storage**: Skills.sh skills (SKILL.md files) are stored in `.agents/skills/`, `skills/managed/`, and `skills/workspace/` directories
+3. **Loading**: When the agent initializes, skills are loaded and parsed from all directories
+4. **Injection**: Skill instructions are injected into the agent's system prompt
+5. **Usage**: The agent uses skill instructions to enhance its responses
+6. **Management**: Skills can be dynamically added/removed through natural language conversation
 
 ### Skill Directories
 
 - `skills/bundled/` - Built-in JavaScript skills (core, github, help)
+- `.agents/skills/` - Skills installed via the Skills CLI (npx skills)
 - `skills/managed/` - Skills.sh SKILL.md files installed from external sources
 - `skills/workspace/` - Custom SKILL.md files specific to your workspace
 

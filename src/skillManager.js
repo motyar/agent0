@@ -96,6 +96,35 @@ class SkillManager {
       console.error(`Error loading skills:`, error.message);
     }
     
+    // Also load skills from .agents/skills/ (installed via skills CLI)
+    try {
+      const agentsSkillsPath = '.agents/skills';
+      await fs.access(agentsSkillsPath);
+      
+      const skillDirs = await fs.readdir(agentsSkillsPath, { withFileTypes: true });
+      
+      for (const dir of skillDirs) {
+        if (dir.isDirectory()) {
+          const skillMdPath = path.join(agentsSkillsPath, dir.name, 'SKILL.md');
+          try {
+            const content = await fs.readFile(skillMdPath, 'utf-8');
+            skills.push({
+              name: dir.name,
+              type: 'skills-cli',
+              path: skillMdPath,
+              content: content
+            });
+          } catch (error) {
+            // SKILL.md might not exist in this directory
+            console.log(`⚠️  Skipping ${dir.name}: ${error.message}`);
+          }
+        }
+      }
+    } catch (error) {
+      // .agents/skills directory might not exist yet
+      console.log(`⚠️  Skipping .agents/skills directory: ${error.message}`);
+    }
+    
     return skills;
   }
 
@@ -144,7 +173,7 @@ class SkillManager {
 
   /**
    * Remove a skill by filename
-   * @param {string} skillName - Name of the skill file (e.g., "skill.md")
+   * @param {string} skillName - Name of the skill file (e.g., "skill.md") or skill directory name
    * @returns {Promise<boolean>} - Success status
    */
   async removeSkill(skillName) {
@@ -164,6 +193,22 @@ class SkillManager {
           // Skill not in this directory, try next
           continue;
         }
+      }
+      
+      // Check if it's a skill installed via skills CLI
+      // For skills CLI, use the npx skills remove command
+      const agentsSkillsPath = path.join('.agents/skills', skillName);
+      try {
+        await fs.access(agentsSkillsPath);
+        // Use npx skills remove to properly uninstall
+        execSync(`npx -y skills remove ${skillName} --yes`, {
+          cwd: process.cwd(),
+          stdio: 'inherit'
+        });
+        console.log(`✓ Removed skill: ${skillName} from skills-cli`);
+        return true;
+      } catch (error) {
+        // Not a skills-cli skill either
       }
       
       // If we get here, skill was not found in any directory
