@@ -1,0 +1,340 @@
+name: Agent0 Unified Workflow
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  schedule:
+    - cron: '* * * * *'  # Every minute for message polling
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight UTC for skills update
+  repository_dispatch:
+    types: [telegram-message, external-event]
+  workflow_dispatch:
+    inputs:
+      event_type:
+        description: 'Event type to process'
+        required: true
+        type: choice
+        options:
+          - telegram-message
+          - health-check
+          - custom
+      payload:
+        description: 'Event payload (JSON)'
+        required: false
+        type: string
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  agent-workflow:
+    # Skip if PR is not by bot or doesn't have bot-task label
+    if: |
+      github.event_name != 'pull_request' ||
+      (github.actor == 'github-actions[bot]' && contains(github.event.pull_request.labels.*.name, 'bot-task'))
+    
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      EVENT_PAYLOAD: ${{ github.event.inputs.payload }}
+      
+    steps:
+      # ===== Checkout and Setup =====
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      # ===== Determine if this is skills update schedule =====
+      - name: Check if skills update schedule
+        id: is_skills_update
+        if: github.event_name == 'schedule'
+        run: |
+          # Check if it's Sunday (day 0)
+          DAY=$(date -u +%u)
+          HOUR=$(date -u +%H)
+          if [ "$DAY" == "7" ] && [ "$HOUR" == "00" ]; then
+            echo "is_skills=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_skills=false" >> $GITHUB_OUTPUT
+          fi
+      
+      # ===== Lightweight Telegram Check (for scheduled and telegram-message dispatch) =====
+      - name: Check for new Telegram messages
+        id: check_messages
+        if: |
+          (github.event_name == 'schedule' && steps.is_skills_update.outputs.is_skills != 'true') ||
+          github.event.action == 'telegram-message' ||
+          github.event.inputs.event_type == 'telegram-message'
+        run: |
+          bash .github/scripts/check-telegram-messages.sh
+      
+      - name: No new messages
+        if: |
+          ((github.event_name == 'schedule' && steps.is_skills_update.outputs.is_skills != 'true') ||
+           github.event.action == 'telegram-message' ||
+           github.event.inputs.event_type == 'telegram-message') &&
+          steps.check_messages.outputs.has_messages != 'true'
+        run: |
+          echo "✅ No new messages, skipping processing"
+      
+      # ===== Setup Node.js (conditional based on whether we need it) =====
+      - name: Setup Node.js
+        if: |
+          steps.check_messages.outputs.has_messages == 'true' ||
+          github.event.action == 'external-event' ||
+          github.event.inputs.event_type == 'health-check' ||
+          github.event.inputs.event_type == 'custom' ||
+          github.event_name == 'pull_request' ||
+          steps.is_skills_update.outputs.is_skills == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      # ===== Install Dependencies (conditional) =====
+      - name: Install dependencies
+        if: |
+          steps.check_messages.outputs.has_messages == 'true' ||
+          github.event.action == 'external-event' ||
+          github.event.inputs.event_type == 'health-check' ||
+          github.event.inputs.event_type == 'custom' ||
+          github.event_name == 'pull_request' ||
+          steps.is_skills_update.outputs.is_skills == 'true'
+        run: npm ci
+      
+      # ===== Load Agent State (for message processing) =====
+      - name: Load agent state
+        if: |
+          steps.check_messages.outputs.has_messages == 'true' ||
+          github.event_name == 'pull_request'
+        run: |
+          echo "🤖 Loading agent soul..."
+          cat agents/primary/soul.md
+          echo ""
+          echo "📊 Agent Identity:"
+          cat agents/primary/identity.json
+      
+      # ===== Message Processing Logic =====
+      - name: Poll Telegram for new messages
+        id: poll
+        if: steps.check_messages.outputs.has_messages == 'true'
+        run: |
+          node src/telegram.js poll > poll-result.json
+          echo "messages_count=$(jq '.messages | length' poll-result.json)" >> $GITHUB_OUTPUT
+          cat poll-result.json
+      
+      - name: Process messages
+        if: steps.poll.outputs.messages_count > 0
+        run: |
+          echo "Processing ${{ steps.poll.outputs.messages_count }} messages..."
+          node src/agent.js process
+      
+      # ===== Health Check Logic =====
+      - name: Run health check
+        if: github.event.inputs.event_type == 'health-check'
+        run: |
+          echo "🏥 Running health check..."
+          npm run doctor
+      
+      # ===== Custom Event Logic =====
+      - name: Handle custom event
+        if: github.event.inputs.event_type == 'custom'
+        run: |
+          echo "🔧 Processing custom event..."
+          echo "Payload: $EVENT_PAYLOAD"
+          # Add custom event handling logic here
+      
+      # ===== PR Processing Logic =====
+      - name: Extract task from PR
+        id: task
+        if: github.event_name == 'pull_request'
+        run: |
+          # Get PR details and extract task description
+          TASK=$(gh pr view ${{ github.event.pull_request.number }} --json body -q '.body' | grep "**Task:**" | sed 's/.*\*\*Task:\*\* *//' | head -n 1 | xargs)
+          if [ -z "$TASK" ]; then
+            echo "Warning: Could not extract task from PR body"
+            TASK="${{ github.event.pull_request.title }}"
+          fi
+          echo "task=$TASK" >> $GITHUB_OUTPUT
+          echo "Processing task: $TASK"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Process task with agent
+        if: github.event_name == 'pull_request'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          TASK_DESCRIPTION: ${{ steps.task.outputs.task }}
+        run: |
+          echo "🤖 Agent processing task..."
+          node src/agent.js process-pr $PR_NUMBER
+      
+      # ===== Skills Update Logic =====
+      - name: Check for skill updates
+        id: check-updates
+        if: steps.is_skills_update.outputs.is_skills == 'true'
+        run: |
+          echo "Checking for skill updates..."
+          # This is a placeholder for future enhancement
+          # You can add logic here to:
+          # 1. Check if skills have newer versions
+          # 2. Update skills that have updates available
+          # 3. Test updated skills
+          
+          # For now, just check if skills directory exists
+          if [ -d "skills/managed" ]; then
+            echo "Skills directory exists"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "No skills directory"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit skill changes
+        if: |
+          steps.is_skills_update.outputs.is_skills == 'true' &&
+          steps.check-updates.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add skills/
+          git commit -m "chore: update skills from Skills.sh" || echo "No changes to commit"
+      
+      - name: Create Pull Request for skills
+        if: |
+          steps.is_skills_update.outputs.is_skills == 'true' &&
+          steps.check-updates.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: 'chore: update skills from Skills.sh'
+          title: 'Update Skills from Skills.sh'
+          body: |
+            ## Skills Update
+            
+            This PR updates skills from Skills.sh directory.
+            
+            ### Changes
+            - Updated skill files in `skills/managed/`
+            
+            ### Testing
+            - [ ] Skills load correctly
+            - [ ] Agent initialization works
+            - [ ] Skills are properly injected into context
+            
+            This is an automated update. Please review changes before merging.
+          branch: update-skills
+          delete-branch: true
+          labels: |
+            skills
+            automated
+      
+      # ===== Commit Memory/State Updates =====
+      - name: Commit changes
+        if: |
+          always() &&
+          steps.is_skills_update.outputs.is_skills != 'true' &&
+          (steps.check_messages.outputs.has_messages == 'true' ||
+           github.event_name == 'pull_request' ||
+           github.event.inputs.event_type == 'health-check' ||
+           github.event.inputs.event_type == 'custom')
+        run: |
+          git config user.name "Agent0 Bot"
+          git config user.email "agent0@github.com"
+          
+          # Add any modified files (queue, memory, agents, etc.)
+          git add memory/ queue/ agents/ -A
+          
+          # Commit if there are changes
+          if ! git diff --staged --quiet; then
+            if [ "${{ github.event_name }}" == "pull_request" ]; then
+              git commit -m "✨ Implemented: ${{ steps.task.outputs.task }}" -m "[automated-commit]"
+            elif [ "${{ steps.poll.outputs.messages_count }}" != "" ]; then
+              TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+              git commit -m "🧠 Memory update - $TIMESTAMP" -m "- Processed ${{ steps.poll.outputs.messages_count }} messages" -m "- Updated conversation history" -m "[automated-commit]"
+            else
+              git commit -m "📝 Webhook event processed: $(date --iso-8601=seconds)"
+            fi
+            git push
+          else
+            echo "No changes to commit"
+          fi
+      
+      # ===== PR-specific actions =====
+      - name: Update PR with status
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "✅ Task processed by Agent0
+            
+            **Status:** Implementation complete
+            **Changes:** $(git diff --staged --quiet && echo 'false' || echo 'true')
+            
+            Ready for review and merge! 🚀"
+      
+      - name: Enable auto-merge
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --auto --squash \
+            --body "🤖 Auto-merging task completion"
+      
+      # ===== Report Status =====
+      - name: Report status
+        if: always()
+        run: |
+          echo "### 🤖 Agent0 Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "- **Type:** PR Processing" >> $GITHUB_STEP_SUMMARY
+            echo "- **PR Number:** ${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Task:** ${{ steps.task.outputs.task }}" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.poll.outputs.messages_count }}" != "" ]; then
+            echo "- **Type:** Message Processing" >> $GITHUB_STEP_SUMMARY
+            echo "- **Messages processed:** ${{ steps.poll.outputs.messages_count }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Agent version:** $(jq -r .version agents/primary/identity.json 2>/dev/null || echo 'N/A')" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ github.event.inputs.event_type }}" != "" ]; then
+            echo "- **Type:** Manual Workflow" >> $GITHUB_STEP_SUMMARY
+            echo "- **Event Type:** ${{ github.event.inputs.event_type }}" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.is_skills_update.outputs.is_skills }}" == "true" ]; then
+            echo "- **Type:** Skills Update (Weekly)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Changes Detected:** ${{ steps.check-updates.outputs.has_changes }}" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ github.event_name }}" == "schedule" ]; then
+            echo "- **Type:** Scheduled Message Poll" >> $GITHUB_STEP_SUMMARY
+            echo "- **New Messages:** ${{ steps.check_messages.outputs.has_messages }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Type:** Repository Dispatch" >> $GITHUB_STEP_SUMMARY
+            echo "- **Action:** ${{ github.event.action }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+
+  # Optional: Send response back (if webhook source supports it)
+  send-response:
+    needs: agent-workflow
+    runs-on: ubuntu-latest
+    if: github.event.client_payload.response_url
+    
+    steps:
+      - name: Send webhook response
+        env:
+          RESPONSE_URL: ${{ github.event.client_payload.response_url }}
+        run: |
+          curl -X POST "$RESPONSE_URL" \
+            -H "Content-Type: application/json" \
+            -d '{"status": "completed", "timestamp": "'$(date --iso-8601=seconds)'"}'
