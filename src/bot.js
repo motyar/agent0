@@ -16,6 +16,10 @@ async function run() {
 
   // 2. Check for new messages
   const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/getUpdates?offset=${lastId + 1}`);
+  if (!response.ok) {
+    console.error(`Telegram API error: ${response.status} ${response.statusText}`);
+    return;
+  }
   const updates = await response.json();
 
   if (!updates.ok || !updates.result || updates.result.length === 0) {
@@ -43,26 +47,40 @@ async function run() {
             messages: [{ role: 'user', content: text }]
           })
         });
+        
+        if (!aiResponse.ok) {
+          console.error(`OpenAI API error: ${aiResponse.status} ${aiResponse.statusText}`);
+          continue;
+        }
+        
         const aiData = await aiResponse.json();
+        if (!aiData.choices || !aiData.choices[0] || !aiData.choices[0].message) {
+          console.error("Invalid OpenAI API response structure");
+          continue;
+        }
         const replyText = aiData.choices[0].message.content;
 
         // 4. Send Reply
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+        const sendResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, text: replyText })
         });
+        
+        if (!sendResponse.ok) {
+          console.error(`Failed to send message: ${sendResponse.status} ${sendResponse.statusText}`);
+        }
       } catch (error) {
         console.error("Error processing AI response or sending message:", error);
       }
     }
 
     lastId = update.update_id;
+    
+    // Save state after each message to prevent reprocessing on crash
+    await fs.mkdir('queue', { recursive: true });
+    await fs.writeFile(STATE_FILE, JSON.stringify({ last_update_id: lastId }));
   }
-
-  // 5. Save state
-  await fs.mkdir('queue', { recursive: true });
-  await fs.writeFile(STATE_FILE, JSON.stringify({ last_update_id: lastId }));
 }
 
 run().catch(console.error);
