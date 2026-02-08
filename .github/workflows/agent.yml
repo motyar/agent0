@@ -242,7 +242,7 @@ jobs:
       - name: Commit changes
         if: |
           always() &&
-          github.event_name != 'schedule' &&
+          steps.is_skills_update.outputs.is_skills != 'true' &&
           (steps.check_messages.outputs.has_messages == 'true' ||
            github.event_name == 'pull_request' ||
            github.event.inputs.event_type == 'health-check' ||
