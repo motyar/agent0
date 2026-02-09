@@ -166,7 +166,12 @@
       "timestamp": "2026-02-09T08:55:04.511Z",
       "user": "Now",
       "bot": "It seems like your message is incomplete. How can I assist you today? If you have a specific question or request, feel free to let me know!"
+    },
+    {
+      "timestamp": "2026-02-09T09:17:34.416Z",
+      "user": "Can you try and install new skills now",
+      "bot": "To install new skills, you can use the command:\n\n```\n/skill install owner/repo\n```\n\nIf you have a specific skill in mind that you would like to install, please let me know the name, and I can help you with the exact command!"
     }
   ],
-  "last_updated": "2026-02-09T08:55:04.511Z"
+  "last_updated": "2026-02-09T09:17:34.416Z"
 }
