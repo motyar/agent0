@@ -2,7 +2,7 @@
   "user_id": 3181434,
   "session_id": "3181434-1770627303557",
   "created": "2026-02-09T08:55:03.557Z",
-  "last_activity": "2026-02-09T09:17:35.775Z",
+  "last_activity": "2026-02-09T09:19:51.924Z",
   "context": [
     {
       "timestamp": "2026-02-09T08:55:05.547Z",
@@ -13,6 +13,11 @@
       "timestamp": "2026-02-09T09:17:35.775Z",
       "user": "Can you try and install new skills now",
       "bot": "To install new skills, you can use the command:\n\n```\n/skill install owner/repo\n```\n\nIf you have a specific skill in mind that you would like to install, please let me know the name, and I can help you with the exact command!"
+    },
+    {
+      "timestamp": "2026-02-09T09:19:51.924Z",
+      "user": "Please list all the skills installed",
+      "bot": "To list all the installed skills, you can use the following command:\n\n```\n/skill list\n```\n\nThis will display all the skills that you have installed. If you need further assistance, feel free to ask!"
     }
   ],
   "summary": null
