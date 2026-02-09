@@ -8,10 +8,10 @@ Agent0 is an autonomous AI agent that runs entirely on GitHub Actions, communica
 
 - **🧠 Persistent Memory**: Every conversation stored in Git history
 - **⏰ Asynchronous**: Responds every 5 minutes via GitHub Actions cron
-- **💬 Telegram Bot**: Simple text-based interface
+- **💬 Telegram Bot**: Simple text-based interface with natural language
 - **📝 Self-Aware**: Reads its own `soul.md` and understands its purpose
 - **🚀 Serverless**: No servers to maintain, runs on GitHub Actions
-- **🔧 PR Creation**: Create pull requests via bot for Copilot agent execution
+- **🎯 Natural Language**: No bot commands - just chat naturally
 
 ## 🏗️ Architecture
 
@@ -93,112 +93,23 @@ Send a message to your Telegram bot. Within 5 minutes (at the next cron run), th
 
 ## 💬 Usage
 
-Just message your bot on Telegram! Examples:
+Just message your bot on Telegram with natural language! Examples:
 
 ```
 You: Hello!
 Agent0: Hi! I'm Agent0, an AI agent running on GitHub Actions...
 
 You: What can you do?
-Agent0: I can have conversations and remember them forever in Git...
+Agent0: I can have conversations, remember them forever in Git, and help you with various tasks. I work with Skills.sh to extend my capabilities...
 
 You: Do you remember what we talked about?
 Agent0: Yes! Last time you asked me about...
+
+You: Can you help me write some code?
+Agent0: I can guide you to work with GitHub Copilot agents or help you create a GitHub issue for code changes...
 ```
 
-### 🛠️ Simple Skill Commands
-
-Agent0 makes it super easy to install and manage skills directly from Telegram:
-
-```
-You: /skill install vercel/code-review
-Agent0: 🔄 Installing skill: vercel/code-review...
-        ✅ Successfully installed skill: vercel/code-review
-
-        The skill is now available and loaded into my context.
-
-You: /skill list
-Agent0: 📋 Installed Skills (2):
-        • find-skills (skills-cli)
-        • code-review.md (managed)
-
-You: /skill remove code-review.md
-Agent0: 🔄 Removing skill: code-review.md...
-        ✅ Successfully removed skill: code-review.md
-```
-
-**Available skill commands:**
-- `/skill install owner/repo` - Install a skill from GitHub
-- `/skill list` - List all installed skills
-- `/skill remove skill-name` - Remove a skill
-- `/skill` - Show help for skill commands
-
-### 🧠 Session Memory Commands
-
-Agent0 maintains session-based memory for better context awareness:
-
-```
-You: /memory show
-Agent0: 🧠 Active Session:
-        • Session ID: 12345-1707472800000
-        • Created: 2/9/2026, 6:32:00 AM
-        • Messages in session: 5
-        • Context window: 5/20 messages
-
-        Use /memory clear to start a new session.
-
-You: /memory clear
-Agent0: ✅ Session cleared! Starting fresh.
-```
-
-**Available memory commands:**
-- `/memory show` - Show current session information
-- `/memory clear` - Clear session and start fresh
-- `/memory` - Show help for memory commands
-
-**How Session Memory Works:**
-- Sessions automatically track your last 20 messages for context
-- Sessions expire after 30 minutes of inactivity
-- Long-term memory is still saved to Git (separate from sessions)
-- Expired sessions automatically create new ones
-
-### 📋 Async Task Queue
-
-Agent0 can handle complex tasks asynchronously through a task queue system:
-
-```
-You: Please analyze the repository and create a summary report
-Agent0: I've created a task to analyze the repository.
-        
-        📋 Task: analyze the repository and create a summary report
-        🆔 ID: task-1707472800000-abc123
-        
-        The task will be processed in the background, and I'll notify 
-        you when it's complete!
-
-[A few minutes later...]
-
-Agent0: ✅ Task completed!
-
-        📋 Task: analyze the repository and create a summary report
-        🆔 ID: task-1707472800000-abc123
-        
-        [Task results here...]
-```
-
-**How Task Queue Works:**
-- Tasks are queued when requested and processed one by one
-- Each task gets a unique ID for tracking
-- You receive notifications when tasks complete or fail
-- Task results are stored and can be retrieved later
-- All task activity is saved to memory
-
-**Task Types:**
-- `general` - General purpose tasks (default)
-- `code` - Code execution in sandbox
-- `research` - Web search and research
-- `skill` - Skill installation/management
-- `memory` - Memory search and analysis
+**Everything works with natural language - no bot commands needed!**
 
 ### 🎯 Skills System
 
@@ -277,26 +188,6 @@ Browse thousands of skills at <a href="https://skills.sh">skills.sh</a>
 5. Skills enhance the agent's knowledge and capabilities
 6. Manage skills dynamically through natural conversation
 
-### 🔧 Creating PRs via Bot
-
-You can ask Agent0 to create pull requests that will be executed by GitHub Copilot agents:
-
-```
-You: Create a PR to improve error handling
-Agent0: ✅ I've created PR #123 for your task! The PR is ready for GitHub 
-        Copilot agents to work on. You can track progress at: [PR URL]
-
-You: Make a PR to add authentication
-Agent0: ✅ I've created PR #124 successfully! ...
-```
-
-The agent understands natural language requests for PR creation and will:
-1. Parse your task request
-2. Create a new branch
-3. Create a pull request with detailed instructions
-4. Label it for Copilot agent execution
-5. Provide you with the PR link
-
 ## 🧠 How Memory Works
 
 Agent0 now has two-tier memory system:
@@ -361,33 +252,25 @@ npm run poll          # Poll for Telegram messages
 
 ## 📊 Current Status
 
-**Version**: 1.0.1 (Simplified)
-**Status**: ✅ Simplified & Enhanced
+**Version**: 1.0.2 (Simplified)
+**Status**: ✅ Simplified with Natural Language
 
 **Working**:
 - ✅ Telegram message polling and replies
 - ✅ Two-tier memory system (session + long-term)
-- ✅ Simple inline skill commands (/skill install, /skill list, /skill remove)
-- ✅ Session memory commands (/memory show, /memory clear)
+- ✅ Natural language only - no bot commands
 - ✅ Context-aware responses with session tracking
 - ✅ Git-based persistence
 - ✅ Multi-provider LLM support (OpenAI, Anthropic)
 - ✅ Auto-discovery skills engine
-- ✅ PR creation via bot for Copilot agents
-- ✅ Webhook support for real-time events
-- ✅ Semantic memory search (vector embeddings)
-- ✅ Multi-agent routing and collaboration
-- ✅ Docker-based sandbox mode
-- ✅ Hot reload for code changes
-- ✅ Streaming responses
-- ✅ Web search integration
-- ✅ Advanced tool execution with TypeBox
+- ✅ Personality and soul integration
+- ✅ Async message processing (every 5 minutes)
 
-**Simplified in v1.0.1**:
-- ✨ Simplified skill installation via Telegram commands
-- ✨ Enhanced session-based memory (30-min timeout, 20-msg window)
-- ✨ Cleaner bot.js with inline command handlers
-- ✨ Better error handling and user feedback
+**Simplified in v1.0.2**:
+- ✨ Removed all bot commands - everything is natural language
+- ✨ Removed direct PR creation (guide users to GitHub Copilot agents instead)
+- ✨ Cleaner, more focused bot.js
+- ✨ Soul/personality integrated into every response
 
 ## ⚠️ Limitations
 
