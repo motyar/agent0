@@ -19,6 +19,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install dependencies
+        run: npm install
+
       - name: Install find-skills
         run: |
           # Install find-skills skill from vercel-labs/skills if not already installed
