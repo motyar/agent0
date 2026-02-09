@@ -2,7 +2,7 @@
 
 **A simple AI agent that lives in GitHub Actions**
 
-Agent0 is an autonomous AI agent that runs entirely on GitHub Actions, communicates via Telegram, remembers every conversation in Git, and can create pull requests for code changes.
+Agent0 is an autonomous AI agent that runs entirely on GitHub Actions, communicates via Telegram, remembers every conversation in Git, and can create pull requests for code changes using the GitHub Copilot SDK.
 
 ## 🌟 Features
 
@@ -58,7 +58,8 @@ Go to your repository → Settings → Secrets and variables → Actions
 Add these secrets:
 
 - `TELEGRAM_BOT_TOKEN` - Your bot token from BotFather
-- `OPENAI_API_KEY` - Your OpenAI API key from [platform.openai.com](https://platform.openai.com)
+
+Note: The bot now uses the GitHub Copilot SDK which authenticates via the `GITHUB_TOKEN` automatically provided by GitHub Actions.
 
 ### 3. Enable GitHub Actions
 
@@ -71,7 +72,7 @@ Add these secrets:
 Send a message to your Telegram bot. Within 5 minutes (at the next cron run), the agent will:
 1. Poll for your message
 2. Load its soul and memory
-3. Think and generate a response using GPT-4o-mini
+3. Think and generate a response using the GitHub Copilot SDK
 4. Reply to you
 5. Commit the conversation to Git
 
@@ -99,7 +100,7 @@ The agent will:
 3. For each message:
    - Loads the user's conversation history and session context
    - Loads its soul/personality from `agents/primary/soul.md`
-   - Processes the message with GPT-4o-mini
+   - Processes the message with GitHub Copilot SDK (GPT-4o-mini model)
    - Can create GitHub issues assigned to Copilot agent if requested
    - Sends response back via Telegram
    - Saves conversation to Git
@@ -114,7 +115,7 @@ The agent will:
 ## 🎯 Key Features
 
 ### Chat with Memory
-The agent remembers all your previous conversations and maintains context within sessions.
+The agent remembers all your previous conversations and maintains context within sessions using the GitHub Copilot SDK.
 
 ### Natural Language Code Changes with Copilot Agent
 Ask the agent to make code changes, and it will create a GitHub issue assigned to the Copilot agent. The Copilot agent will then automatically implement the changes and create a pull request:
@@ -144,8 +145,8 @@ Edit `agents/primary/identity.json` to update metadata and statistics.
 ## 📊 What's Simplified
 
 This is a streamlined version of Agent0 that focuses on:
-- ✅ Chat with memory and personality
-- ✅ Processing messages with GPT-4o-mini
+- ✅ Chat with memory and personality using GitHub Copilot SDK
+- ✅ Processing messages with the Copilot SDK (GPT-4o-mini model)
 - ✅ Creating GitHub issues assigned to Copilot agent for code changes
 - ❌ No complex task queues
 - ❌ No sandbox execution

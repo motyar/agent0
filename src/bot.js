@@ -1,16 +1,32 @@
 import fs from 'fs/promises';
+import { CopilotClient } from '@github/copilot-sdk';
 import MemoryEngine from './memory-engine.js';
 import GitHubService from './github-service.js';
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const STATE_FILE = 'queue/last_id.json';
 
 // Initialize memory and GitHub service
 const memory = new MemoryEngine();
 const github = new GitHubService();
 
+// Initialize Copilot SDK client
+const copilotClient = new CopilotClient();
+let copilotReady = false;
+
 async function run() {
+  // Initialize Copilot client once
+  if (!copilotReady) {
+    try {
+      await copilotClient.start();
+      copilotReady = true;
+      console.log("Copilot SDK client started successfully");
+    } catch (error) {
+      console.error("Failed to start Copilot SDK client:", error);
+      throw error;
+    }
+  }
+
   // 1. Load state
   let lastId = 0;
   try {
@@ -65,82 +81,77 @@ You can help users with natural language requests. When users ask you to perform
 
 You remember all conversations and maintain context. Be helpful, transparent about your capabilities, and always preserve your personality.`;
 
-        // 4. Get AI Response with function calling
-        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${OPENAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: text }
-            ],
-            tools: [
-              {
-                type: 'function',
-                function: {
-                  name: 'createIssue',
-                  description: 'Create a GitHub issue and assign it to Copilot agent for code changes. Use this when the user requests code changes, new features, bug fixes, or any modifications to the repository. Copilot will process the issue and create a PR automatically.',
-                  parameters: {
-                    type: 'object',
-                    properties: {
-                      taskDescription: {
-                        type: 'string',
-                        description: 'Clear description of the task to be implemented'
-                      }
-                    },
-                    required: ['taskDescription']
-                  }
-                }
+        // Define the createIssue tool for Copilot SDK
+        const createIssueTool = {
+          name: 'createIssue',
+          description: 'Create a GitHub issue and assign it to Copilot agent for code changes. Use this when the user requests code changes, new features, bug fixes, or any modifications to the repository. Copilot will process the issue and create a PR automatically.',
+          parameters: {
+            type: 'object',
+            properties: {
+              taskDescription: {
+                type: 'string',
+                description: 'Clear description of the task to be implemented'
               }
-            ],
-            tool_choice: 'auto'
-          })
+            },
+            required: ['taskDescription']
+          },
+          handler: async (args) => {
+            try {
+              console.log(`Creating issue for task: ${args.taskDescription}`);
+              
+              const result = await github.createTaskIssue({
+                taskDescription: args.taskDescription,
+                requestedBy: username,
+                userId: userId
+              });
+              
+              return {
+                content: [{
+                  type: 'text',
+                  text: `✅ I've created a GitHub issue and assigned it to Copilot agent!\n\n📝 **Task:** ${args.taskDescription}\n\n🔗 **Issue Link:** ${result.issue_url}\n\n🤖 The GitHub Copilot agent will process this issue, implement the changes, and create a pull request automatically. I'll let you know once it's ready for review!`
+                }]
+              };
+            } catch (error) {
+              console.error("Error creating issue:", error);
+              return {
+                content: [{
+                  type: 'text',
+                  text: `❌ I encountered an error creating the issue: ${error.message}`
+                }]
+              };
+            }
+          }
+        };
+
+        // 4. Create Copilot session and get AI Response
+        const session = await copilotClient.createSession({
+          model: 'gpt-4o-mini',
+          tools: [createIssueTool]
         });
 
-        if (!aiResponse.ok) {
-          console.error(`OpenAI API error: ${aiResponse.status} ${aiResponse.statusText}`);
-          continue;
-        }
+        // Build the conversation with system prompt and user message
+        const response = await session.sendAndWait({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: text }
+          ]
+        });
 
-        const aiData = await aiResponse.json();
-        if (!aiData.choices || !aiData.choices[0] || !aiData.choices[0].message) {
-          console.error("Invalid OpenAI API response structure");
-          continue;
-        }
+        let replyText = '';
         
-        const message = aiData.choices[0].message;
-        let replyText = message.content || '';
-
-        // Handle tool calls
-        if (message.tool_calls && message.tool_calls.length > 0) {
-          for (const toolCall of message.tool_calls) {
-            // Handle both createIssue and createPR (for backward compatibility)
-            if (toolCall.function.name === 'createIssue' || toolCall.function.name === 'createPR') {
-              try {
-                const args = JSON.parse(toolCall.function.arguments);
-                const isLegacy = toolCall.function.name === 'createPR';
-                console.log(`Creating issue for task${isLegacy ? ' (legacy createPR call)' : ''}: ${args.taskDescription}`);
-                
-                const result = await github.createTaskIssue({
-                  taskDescription: args.taskDescription,
-                  requestedBy: username,
-                  userId: userId
-                });
-                
-                replyText = `✅ I've created a GitHub issue and assigned it to Copilot agent!\n\n📝 **Task:** ${args.taskDescription}\n\n🔗 **Issue Link:** ${result.issue_url}\n\n🤖 The GitHub Copilot agent will process this issue, implement the changes, and create a pull request automatically. I'll let you know once it's ready for review!`;
-              } catch (error) {
-                console.error("Error creating issue:", error);
-                replyText = `❌ I encountered an error creating the issue: ${error.message}`;
-              }
-            }
+        // Extract reply from Copilot SDK response
+        if (response?.data?.content) {
+          if (typeof response.data.content === 'string') {
+            replyText = response.data.content;
+          } else if (Array.isArray(response.data.content)) {
+            // Handle array of content items
+            replyText = response.data.content
+              .map(item => item.text || item.content || '')
+              .join('');
           }
         }
 
-        // If no reply text and no tool calls, provide a default response
+        // If no reply text, provide a default response
         if (!replyText) {
           replyText = "I processed your message but don't have a specific response. Please try again!";
         }
@@ -181,4 +192,15 @@ You remember all conversations and maintain context. Be helpful, transparent abo
   }
 }
 
-run().catch(console.error);
+// Run and handle cleanup
+run().catch(console.error).finally(async () => {
+  // Stop Copilot client if it was started
+  if (copilotReady) {
+    try {
+      await copilotClient.stop();
+      console.log("Copilot SDK client stopped");
+    } catch (error) {
+      console.error("Error stopping Copilot SDK client:", error);
+    }
+  }
+});

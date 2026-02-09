@@ -3,9 +3,9 @@
 ## Overview
 
 Agent0 has been simplified to focus on its core capabilities:
-1. Chat with memory and personality
-2. Processing all messages with GPT-4o-mini
-3. PR creation via GitHub Actions
+1. Chat with memory and personality using GitHub Copilot SDK
+2. Processing all messages with the Copilot SDK (GPT-4o-mini model)
+3. PR creation via GitHub Copilot coding agent (issue-based workflow)
 
 ## What Was Removed
 
@@ -62,9 +62,10 @@ Removed:
 - ❌ `@sinclair/typebox`
 - ❌ `chokidar`
 - ❌ `cron`
+- ❌ `openai` - Replaced by Copilot SDK
 
 Kept:
-- ✅ `openai` - For GPT-4o-mini
+- ✅ `@github/copilot-sdk` - For AI capabilities via GitHub Copilot
 - ✅ `@octokit/rest` - For GitHub API (though not used directly in bot.js)
 
 ## What Was Kept
@@ -73,8 +74,8 @@ Kept:
 1. **src/bot.js** - Main bot logic
    - Polls Telegram for messages
    - Loads soul and memory
-   - Processes with GPT-4o-mini
-   - Can create PRs via function calling
+   - Processes with GitHub Copilot SDK (GPT-4o-mini model)
+   - Can create issues via function calling (Copilot SDK tools)
    - Saves conversations to memory
 
 2. **src/memory-engine.js** - Memory management
@@ -116,12 +117,13 @@ Kept:
 1. **Every 5 minutes**, GitHub Actions triggers `agent.yml`
 2. The workflow runs `node src/bot.js`
 3. Bot.js:
+   - Initializes GitHub Copilot SDK client
    - Polls Telegram for new messages
    - For each message:
      - Loads user's session context from memory
      - Loads soul/personality
-     - Sends to GPT-4o-mini with function calling
-     - If user requests code changes, creates PR via GitHub API
+     - Sends to Copilot SDK with tool (createIssue) support
+     - If user requests code changes, creates issue via GitHub API and assigns to @copilot
      - Saves conversation to memory
      - Replies to user
 4. Workflow commits memory and state back to Git
@@ -133,22 +135,23 @@ Kept:
 - Session context maintained across messages
 - Semantic search via embeddings
 
-### 2. GPT-4o-mini Processing
-- All messages processed by GPT-4o-mini
-- Function calling for PR creation
-- Personality from soul.md
+### 2. GitHub Copilot SDK Processing
+- All messages processed via GitHub Copilot SDK
+- Tool calling for issue creation
+- Authenticates via GITHUB_TOKEN
+- Uses GPT-4o-mini model
 
-### 3. PR Creation
+### 3. Issue Creation for Code Changes
 - Users can request code changes
-- Agent creates PR via GitHub API
-- PRs can be worked on by GitHub Copilot
+- Agent creates issues via GitHub API
+- Issues assigned to @copilot for implementation
+- Copilot agent creates PRs automatically
 
 ## Configuration
 
 ### Required Secrets
 - `TELEGRAM_BOT_TOKEN` - From BotFather
-- `OPENAI_API_KEY` - From OpenAI
-- `GITHUB_TOKEN` - Automatically provided by GitHub Actions
+- `GITHUB_TOKEN` - Automatically provided by GitHub Actions (used by Copilot SDK)
 
 ### Workflow Schedule
 - Runs every 5 minutes: `*/5 * * * *`
@@ -190,6 +193,6 @@ agent0/
 
 ## Version
 
-- **Old Version**: 1.0.2
-- **New Version**: 2.0.0
+- **Old Version**: 1.0.2 (with OpenAI direct API)
+- **New Version**: 2.1.0 (with GitHub Copilot SDK)
 - **Status**: ✅ Complete and tested
