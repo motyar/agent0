@@ -1,8 +1,8 @@
 {
   "name": "Agent0",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "created": "2026-02-06",
-  "last_updated": "2026-02-08T13:34:51.625Z",
+  "last_updated": "2026-02-09T09:26:51.625Z",
   "type": "autonomous-telegram-bot",
   "purpose": "Learn, grow, and serve users through intelligent conversation",
   "platform": "github-actions",
@@ -10,7 +10,9 @@
     "conversation": true,
     "memory": true,
     "learning": true,
-    "code_generation": true,
+    "natural_language": true,
+    "async_processing": true,
+    "code_generation": false,
     "self_improvement": false
   },
   "stats": {

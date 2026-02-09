@@ -65,13 +65,6 @@ class Agent0 {
           description: 'Name of the skill file to remove, e.g., "code-review.md"'
         })
       }),
-      create_pr: Type.Object({
-        taskDescription: Type.String({
-          description: 'Description of the task to implement',
-          minLength: 10,
-          maxLength: 500
-        })
-      }),
       execute_code_sandbox: Type.Object({
         code: Type.String({
           description: 'Code to execute in sandbox',
@@ -161,23 +154,6 @@ class Agent0 {
               }
             },
             required: ['skillName']
-          }
-        }
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'create_pr',
-          description: 'Create a pull request for a task. The PR will be created for GitHub Copilot agents to implement.',
-          parameters: {
-            type: 'object',
-            properties: {
-              taskDescription: {
-                type: 'string',
-                description: 'Description of the task to implement, must be at least 10 characters'
-              }
-            },
-            required: ['taskDescription']
           }
         }
       },
@@ -572,10 +548,6 @@ Respond now:`;
           result = await this.handleToolRemoveSkill(args.skillName);
           break;
           
-        case 'create_pr':
-          result = await this.handleToolCreatePR(message, args.taskDescription);
-          break;
-          
         case 'execute_code_sandbox':
           result = await this.handleToolExecuteCodeSandbox(args.code, args.language);
           break;
@@ -765,52 +737,6 @@ Respond now:`;
   /**
    * Tool handler: Create PR
    */
-  async handleToolCreatePR(message, taskDescription) {
-    try {
-      // Validate task description
-      if (!taskDescription || taskDescription.length < 10) {
-        return {
-          success: false,
-          message: 'Task description must be at least 10 characters long'
-        };
-      }
-      
-      if (taskDescription.length > 500) {
-        return {
-          success: false,
-          message: 'Task description is too long (max 500 characters)'
-        };
-      }
-      
-      if (!this.github.isAvailable()) {
-        return {
-          success: false,
-          message: 'GitHub integration is not properly configured. GITHUB_TOKEN may be missing.'
-        };
-      }
-
-      // Create the PR
-      const result = await this.github.createTaskPR({
-        taskDescription: taskDescription,
-        requestedBy: message.username || message.first_name,
-        userId: message.user_id
-      });
-
-      return {
-        success: true,
-        pr_number: result.pr_number,
-        pr_url: result.pr_url,
-        branch: result.branch,
-        message: `PR #${result.pr_number} created successfully`
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: `Error creating PR: ${error.message}`
-      };
-    }
-  }
-
   /**
    * Tool handler: Execute code in sandbox
    */
