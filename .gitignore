@@ -25,3 +25,8 @@ docker-compose.yml
 # Managed skills can be version controlled or not
 # Uncomment to ignore:
 # skills/managed/
+
+# Memory: Keep sessions but exclude large embeddings
+memory/embeddings/
+memory/conversations/
+# Keep memory/sessions/ for session tracking

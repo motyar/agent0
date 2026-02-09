@@ -7,13 +7,18 @@ class MemoryEngine {
     this.conversationsPath = 'memory/conversations';
     this.indexPath = 'memory/conversations/index.json';
     this.embeddingsPath = 'memory/embeddings';
-    
+    this.sessionsPath = 'memory/sessions';
+
     // Initialize OpenAI for embeddings (only if API key is available)
     this.openai = process.env.OPENAI_API_KEY ? new OpenAI({
       apiKey: process.env.OPENAI_API_KEY
     }) : null;
-    
+
     this.embeddingModel = 'text-embedding-3-small';
+
+    // Session configuration
+    this.sessionTimeout = 30 * 60 * 1000; // 30 minutes
+    this.sessionContextWindow = 20; // Last 20 messages in active session
   }
 
   /**
@@ -440,7 +445,7 @@ class MemoryEngine {
       // Load stored embeddings
       const month = this.getCurrentMonth();
       const embeddingFile = path.join(this.embeddingsPath, month, `user-${userId}.json`);
-      
+
       let embeddingsData;
       try {
         const data = await fs.readFile(embeddingFile, 'utf-8');
@@ -457,7 +462,7 @@ class MemoryEngine {
       const scored = embeddingsData.embeddings.map(item => {
         const similarity = this.cosineSimilarity(queryEmbedding, item.embedding);
         const turn = history[item.index];
-        
+
         return {
           turn,
           similarity,
@@ -480,6 +485,150 @@ class MemoryEngine {
       // Fall back to keyword search
       return this.search(userId, query, options);
     }
+  }
+
+  /**
+   * Get or create active session for a user
+   * Sessions help maintain context in ongoing conversations
+   */
+  async getSession(userId) {
+    const sessionFile = path.join(this.sessionsPath, `user-${userId}.json`);
+
+    try {
+      const data = await fs.readFile(sessionFile, 'utf-8');
+      const session = JSON.parse(data);
+
+      // Check if session is still active (within timeout)
+      const lastActivity = new Date(session.last_activity);
+      const now = new Date();
+      const timeSinceLastActivity = now - lastActivity;
+
+      if (timeSinceLastActivity > this.sessionTimeout) {
+        // Session expired, create new one
+        console.log(`⏰ Session expired for user ${userId}, creating new session`);
+        return this.createNewSession(userId);
+      }
+
+      return session;
+    } catch (error) {
+      // No session found, create new one
+      return this.createNewSession(userId);
+    }
+  }
+
+  /**
+   * Create a new session for a user
+   */
+  async createNewSession(userId) {
+    const session = {
+      user_id: userId,
+      session_id: `${userId}-${Date.now()}`,
+      created: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      context: [],
+      summary: null
+    };
+
+    await this.saveSession(session);
+    console.log(`✨ Created new session for user ${userId}`);
+    return session;
+  }
+
+  /**
+   * Update session with new conversation turn
+   */
+  async updateSession(userId, userMessage, botResponse) {
+    const session = await this.getSession(userId);
+
+    // Add turn to session context
+    session.context.push({
+      timestamp: new Date().toISOString(),
+      user: userMessage,
+      bot: botResponse
+    });
+
+    // Keep only recent messages within context window
+    if (session.context.length > this.sessionContextWindow) {
+      session.context = session.context.slice(-this.sessionContextWindow);
+    }
+
+    session.last_activity = new Date().toISOString();
+
+    await this.saveSession(session);
+    return session;
+  }
+
+  /**
+   * Save session to disk
+   */
+  async saveSession(session) {
+    const sessionFile = path.join(this.sessionsPath, `user-${session.user_id}.json`);
+
+    // Ensure directory exists
+    await fs.mkdir(path.dirname(sessionFile), { recursive: true });
+
+    await fs.writeFile(sessionFile, JSON.stringify(session, null, 2));
+  }
+
+  /**
+   * Get session context formatted for AI consumption
+   */
+  async getSessionContext(userId) {
+    const session = await this.getSession(userId);
+
+    if (session.context.length === 0) {
+      return "No active session context.";
+    }
+
+    const contextString = session.context
+      .map(turn => `User: ${turn.user}\nBot: ${turn.bot}`)
+      .join('\n\n');
+
+    return `Active session context (${session.context.length} messages):\n\n${contextString}`;
+  }
+
+  /**
+   * Clear session for a user
+   */
+  async clearSession(userId) {
+    const sessionFile = path.join(this.sessionsPath, `user-${userId}.json`);
+
+    try {
+      await fs.unlink(sessionFile);
+      console.log(`🗑️  Cleared session for user ${userId}`);
+      return true;
+    } catch (error) {
+      // Session file doesn't exist
+      return false;
+    }
+  }
+
+  /**
+   * Get combined context: session + relevant long-term memory
+   */
+  async getCombinedContext(userId, query = null, options = {}) {
+    const sessionContext = await this.getSessionContext(userId);
+
+    // If no query provided, return only session context
+    if (!query) {
+      return sessionContext;
+    }
+
+    // Get relevant memories from long-term storage
+    const relevantMemories = await this.search(userId, query, {
+      limit: options.memoryLimit || 5,
+      minScore: options.minScore || 0.5
+    });
+
+    if (relevantMemories.length === 0) {
+      return sessionContext;
+    }
+
+    const memoriesString = relevantMemories
+      .map(turn => `[${turn.timestamp}]\nUser: ${turn.user}\nBot: ${turn.bot}`)
+      .join('\n\n');
+
+    return `${sessionContext}\n\n--- Relevant Past Conversations ---\n\n${memoriesString}`;
   }
 }
 

@@ -98,6 +98,62 @@ You: Do you remember what we talked about?
 Agent0: Yes! Last time you asked me about...
 ```
 
+### 🛠️ Simple Skill Commands
+
+Agent0 makes it super easy to install and manage skills directly from Telegram:
+
+```
+You: /skill install vercel/code-review
+Agent0: 🔄 Installing skill: vercel/code-review...
+        ✅ Successfully installed skill: vercel/code-review
+
+        The skill is now available and loaded into my context.
+
+You: /skill list
+Agent0: 📋 Installed Skills (2):
+        • find-skills (skills-cli)
+        • code-review.md (managed)
+
+You: /skill remove code-review.md
+Agent0: 🔄 Removing skill: code-review.md...
+        ✅ Successfully removed skill: code-review.md
+```
+
+**Available skill commands:**
+- `/skill install owner/repo` - Install a skill from GitHub
+- `/skill list` - List all installed skills
+- `/skill remove skill-name` - Remove a skill
+- `/skill` - Show help for skill commands
+
+### 🧠 Session Memory Commands
+
+Agent0 maintains session-based memory for better context awareness:
+
+```
+You: /memory show
+Agent0: 🧠 Active Session:
+        • Session ID: 12345-1707472800000
+        • Created: 2/9/2026, 6:32:00 AM
+        • Messages in session: 5
+        • Context window: 5/20 messages
+
+        Use /memory clear to start a new session.
+
+You: /memory clear
+Agent0: ✅ Session cleared! Starting fresh.
+```
+
+**Available memory commands:**
+- `/memory show` - Show current session information
+- `/memory clear` - Clear session and start fresh
+- `/memory` - Show help for memory commands
+
+**How Session Memory Works:**
+- Sessions automatically track your last 20 messages for context
+- Sessions expire after 30 minutes of inactivity
+- Long-term memory is still saved to Git (separate from sessions)
+- Expired sessions automatically create new ones
+
 ### 🎯 Skills System
 
 Agent0 has a modular skills system that can be managed through natural language:
@@ -197,10 +253,23 @@ The agent understands natural language requests for PR creation and will:
 
 ## 🧠 How Memory Works
 
-Every conversation is stored in:
-- `memory/conversations/YYYY-MM/user-{USER_ID}.json`
+Agent0 now has two-tier memory system:
 
-The agent can recall past conversations and build context over time.
+### Session Memory (Short-term)
+- **Location**: `memory/sessions/user-{USER_ID}.json`
+- **Purpose**: Maintains context for ongoing conversations
+- **Capacity**: Last 20 messages per user
+- **Lifespan**: 30 minutes of inactivity
+- **Usage**: Automatically included in every conversation
+
+### Long-term Memory
+- **Location**: `memory/conversations/YYYY-MM/user-{USER_ID}.json`
+- **Purpose**: Permanent storage of all conversations
+- **Capacity**: Last 100 messages per user
+- **Lifespan**: Forever (committed to Git)
+- **Usage**: Searchable and retrievable when needed
+
+The agent can recall past conversations and build context over time using both memory systems.
 
 ## ⚙️ Configuration
 
@@ -246,13 +315,15 @@ npm run poll          # Poll for Telegram messages
 
 ## 📊 Current Status
 
-**Version**: 1.0.0 (MVP)
-**Status**: ✅ Minimum Viable Product
+**Version**: 1.0.1 (Simplified)
+**Status**: ✅ Simplified & Enhanced
 
 **Working**:
-- ✅ Telegram message polling
-- ✅ Conversation memory with search
-- ✅ Context-aware responses
+- ✅ Telegram message polling and replies
+- ✅ Two-tier memory system (session + long-term)
+- ✅ Simple inline skill commands (/skill install, /skill list, /skill remove)
+- ✅ Session memory commands (/memory show, /memory clear)
+- ✅ Context-aware responses with session tracking
 - ✅ Git-based persistence
 - ✅ Multi-provider LLM support (OpenAI, Anthropic)
 - ✅ Auto-discovery skills engine
@@ -265,6 +336,12 @@ npm run poll          # Poll for Telegram messages
 - ✅ Streaming responses
 - ✅ Web search integration
 - ✅ Advanced tool execution with TypeBox
+
+**Simplified in v1.0.1**:
+- ✨ Simplified skill installation via Telegram commands
+- ✨ Enhanced session-based memory (30-min timeout, 20-msg window)
+- ✨ Cleaner bot.js with inline command handlers
+- ✨ Better error handling and user feedback
 
 ## ⚠️ Limitations
 
