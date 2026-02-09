@@ -26,8 +26,8 @@ User → Telegram → GitHub Actions (every 5 min) → Agent0 → Response
 ```
 agent0/
 ├── .github/workflows/       # GitHub Actions workflows
-│   ├── process-messages.yml # Main message processing (every 5 min)
-│   └── webhook.yml          # Webhook handler for real-time events
+│   ├── agent.yml           # Main message processing (every 5 min)
+│   └── webhook.yml         # Webhook handler for real-time events
 ├── agents/primary/          # Agent's consciousness
 │   ├── soul.md             # Personality and purpose
 │   └── identity.json       # Metadata and configuration
@@ -35,8 +35,15 @@ agent0/
 │   ├── models.json         # LLM provider configuration
 │   └── scheduler.json      # Scheduled tasks
 ├── memory/                  # Persistent memory
-│   └── conversations/      # All conversations (by month/user)
-├── queue/                  # Message queue
+│   ├── conversations/      # All conversations (by month/user)
+│   ├── sessions/          # Active session contexts
+│   └── embeddings/        # Vector embeddings for semantic search
+├── queue/                  # Message and task queues
+│   ├── incoming.json      # Incoming Telegram messages
+│   └── tasks/             # Async task queue system
+│       ├── input.json     # Pending tasks
+│       ├── output.json    # Task results
+│       └── current.json   # Currently processing task
 ├── skills/                 # Modular skills
 │   ├── bundled/           # Built-in skills
 │   ├── managed/           # Installed skills
@@ -46,6 +53,7 @@ agent0/
     ├── agent.js           # Main agent logic
     ├── telegram.js        # Telegram integration
     ├── memory-engine.js   # Memory management with search
+    ├── task-queue.js      # Async task queue manager
     ├── skills-engine.js   # Auto-discovery skills system
     └── llm.js             # Multi-provider LLM abstraction
 ```
@@ -153,6 +161,44 @@ Agent0: ✅ Session cleared! Starting fresh.
 - Sessions expire after 30 minutes of inactivity
 - Long-term memory is still saved to Git (separate from sessions)
 - Expired sessions automatically create new ones
+
+### 📋 Async Task Queue
+
+Agent0 can handle complex tasks asynchronously through a task queue system:
+
+```
+You: Please analyze the repository and create a summary report
+Agent0: I've created a task to analyze the repository.
+        
+        📋 Task: analyze the repository and create a summary report
+        🆔 ID: task-1707472800000-abc123
+        
+        The task will be processed in the background, and I'll notify 
+        you when it's complete!
+
+[A few minutes later...]
+
+Agent0: ✅ Task completed!
+
+        📋 Task: analyze the repository and create a summary report
+        🆔 ID: task-1707472800000-abc123
+        
+        [Task results here...]
+```
+
+**How Task Queue Works:**
+- Tasks are queued when requested and processed one by one
+- Each task gets a unique ID for tracking
+- You receive notifications when tasks complete or fail
+- Task results are stored and can be retrieved later
+- All task activity is saved to memory
+
+**Task Types:**
+- `general` - General purpose tasks (default)
+- `code` - Code execution in sandbox
+- `research` - Web search and research
+- `skill` - Skill installation/management
+- `memory` - Memory search and analysis
 
 ### 🎯 Skills System
 
