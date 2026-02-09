@@ -383,7 +383,8 @@ ${skillsSection}
 - Keep responses concise (under 300 words)
 - Use your memory of past conversations
 - You have access to tools for skill management, PR creation, and task queue management
-- When users ask to do something complex, you can create a task for asynchronous processing
+- Use create_task for long-running operations like code execution, web research, or complex analysis
+- Respond immediately for simple queries, conversations, or quick information
 - Tasks are processed one by one in the background and users are notified when complete
 - Users can check task status using the task management tools
 - When users ask to install skills, list skills, remove skills, create PRs, or manage tasks, use the appropriate tools`;
@@ -1381,9 +1382,11 @@ IMPORTANT: All file paths must be relative to the repository root and must not c
       const results = await this.memory.search(task.userId, task.params.query, { limit: 5 });
       return {
         success: true,
-        message: `Found ${results.length} relevant conversations:\n\n${results.map((r, i) =>
-          `${i + 1}. ${r.timestamp}\n   User: ${r.user.substring(0, 50)}...\n   Bot: ${r.bot.substring(0, 50)}...`
-        ).join('\n\n')}`,
+        message: `Found ${results.length} relevant conversations:\n\n${results.map((r, i) => {
+          const userText = r.user.length > 50 ? r.user.substring(0, 50) + '...' : r.user;
+          const botText = r.bot.length > 50 ? r.bot.substring(0, 50) + '...' : r.bot;
+          return `${i + 1}. ${r.timestamp}\n   User: ${userText}\n   Bot: ${botText}`;
+        }).join('\n\n')}`,
         results
       };
     }
