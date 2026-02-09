@@ -186,7 +186,7 @@ GitHub requires at least one commit difference to create a pull request.
       const issueTitle = `Bot Task: ${taskDescription}`;
       const issueBody = `## Task Request from Bot
 
-**Requested by:** @${requestedBy} (User ID: ${userId})
+**Requested by:** @${requestedBy}
 
 ### Task Description
 

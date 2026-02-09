@@ -118,28 +118,12 @@ You remember all conversations and maintain context. Be helpful, transparent abo
         // Handle tool calls
         if (message.tool_calls && message.tool_calls.length > 0) {
           for (const toolCall of message.tool_calls) {
-            if (toolCall.function.name === 'createIssue') {
+            // Handle both createIssue and createPR (for backward compatibility)
+            if (toolCall.function.name === 'createIssue' || toolCall.function.name === 'createPR') {
               try {
                 const args = JSON.parse(toolCall.function.arguments);
-                console.log(`Creating issue for task: ${args.taskDescription}`);
-                
-                const result = await github.createTaskIssue({
-                  taskDescription: args.taskDescription,
-                  requestedBy: username,
-                  userId: userId
-                });
-                
-                replyText = `✅ I've created a GitHub issue and assigned it to Copilot agent!\n\n📝 **Task:** ${args.taskDescription}\n\n🔗 **Issue Link:** ${result.issue_url}\n\n🤖 The GitHub Copilot agent will process this issue, implement the changes, and create a pull request automatically. I'll let you know once it's ready for review!`;
-              } catch (error) {
-                console.error("Error creating issue:", error);
-                replyText = `❌ I encountered an error creating the issue: ${error.message}`;
-              }
-            }
-            // Keep backward compatibility with old tool name
-            else if (toolCall.function.name === 'createPR') {
-              try {
-                const args = JSON.parse(toolCall.function.arguments);
-                console.log(`Creating issue for task (legacy createPR call): ${args.taskDescription}`);
+                const isLegacy = toolCall.function.name === 'createPR';
+                console.log(`Creating issue for task${isLegacy ? ' (legacy createPR call)' : ''}: ${args.taskDescription}`);
                 
                 const result = await github.createTaskIssue({
                   taskDescription: args.taskDescription,
