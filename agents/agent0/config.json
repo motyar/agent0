@@ -4,18 +4,6 @@
   "capabilities": [
     "conversation",
     "memory",
-    "learning",
-    "code_generation",
-    "web_search",
-    "tool_execution",
-    "skill_execution"
-  ],
-  "skills": {
-    "enabled": true,
-    "directory": "./skills",
-    "autoload": true,
-    "sources": [
-      "skills.sh"
-    ]
-  }
+    "pr_creation"
+  ]
 }
