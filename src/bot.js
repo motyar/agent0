@@ -143,12 +143,14 @@ You remember all conversations and maintain context. Be helpful, transparent abo
         }
 
         // Build the conversation with system prompt and user message
+        // Increased timeout to 5 minutes (300000ms) to handle complex operations
+        // Default 60s timeout was causing "Timeout after 60000ms waiting for session.idle" errors
         const response = await session.sendAndWait({
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: text }
           ]
-        });
+        }, 300000);
 
         let replyText = '';
         
