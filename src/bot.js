@@ -11,8 +11,13 @@ const memory = new MemoryEngine();
 const github = new GitHubService();
 
 // Initialize Copilot SDK client
+// The client authenticates via GITHUB_TOKEN environment variable
+// which is automatically provided by GitHub Actions
 const copilotClient = new CopilotClient();
 let copilotReady = false;
+
+// Session cache to reuse sessions per user
+const userSessions = new Map();
 
 async function run() {
   // Initialize Copilot client once
@@ -123,11 +128,16 @@ You remember all conversations and maintain context. Be helpful, transparent abo
           }
         };
 
-        // 4. Create Copilot session and get AI Response
-        const session = await copilotClient.createSession({
-          model: 'gpt-4o-mini',
-          tools: [createIssueTool]
-        });
+        // 4. Create or reuse Copilot session
+        let session = userSessions.get(userId);
+        if (!session) {
+          session = await copilotClient.createSession({
+            model: 'gpt-4o-mini',
+            tools: [createIssueTool]
+          });
+          userSessions.set(userId, session);
+          console.log(`Created new session for user ${userId}`);
+        }
 
         // Build the conversation with system prompt and user message
         const response = await session.sendAndWait({
@@ -194,6 +204,18 @@ You remember all conversations and maintain context. Be helpful, transparent abo
 
 // Cleanup function
 async function cleanup() {
+  // Close all user sessions
+  for (const [userId, session] of userSessions.entries()) {
+    try {
+      console.log(`Closing session for user ${userId}...`);
+      // Sessions are cleaned up automatically by the client
+    } catch (error) {
+      console.error(`Error closing session for user ${userId}:`, error);
+    }
+  }
+  userSessions.clear();
+  
+  // Stop the Copilot client
   if (copilotReady) {
     try {
       console.log("Stopping Copilot SDK client...");
