@@ -11,7 +11,9 @@
     "memory": true,
     "learning": true,
     "natural_language": true,
-    "async_processing": true
+    "async_processing": true,
+    "code_generation": false,
+    "self_improvement": false
   },
   "stats": {
     "total_conversations": 2,
