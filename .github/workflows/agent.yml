@@ -19,6 +19,15 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install find-skills
+        run: |
+          # Install find-skills skill from vercel-labs/skills if not already installed
+          if [ ! -d ".agents/skills/find-skills" ]; then
+            npx -y skills add https://github.com/vercel-labs/skills --skill find-skills --yes
+          else
+            echo "find-skills already installed"
+          fi
+
       - name: Run Agent
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -30,5 +39,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add queue/last_id.json
-          git commit -m "Update last processed message ID" || echo "No changes to commit"
+          git add .agents/skills/
+          git commit -m "Update last processed message ID and skills" || echo "No changes to commit"
           git push

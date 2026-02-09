@@ -96,6 +96,35 @@ class SkillManager {
       console.error(`Error loading skills:`, error.message);
     }
     
+    // Also load skills from .agents/skills/ (installed via skills CLI)
+    try {
+      const agentsSkillsPath = '.agents/skills';
+      await fs.access(agentsSkillsPath);
+      
+      const skillDirs = await fs.readdir(agentsSkillsPath, { withFileTypes: true });
+      
+      for (const dir of skillDirs) {
+        if (dir.isDirectory()) {
+          const skillMdPath = path.join(agentsSkillsPath, dir.name, 'SKILL.md');
+          try {
+            const content = await fs.readFile(skillMdPath, 'utf-8');
+            skills.push({
+              name: dir.name,
+              type: 'skills-cli',
+              path: skillMdPath,
+              content: content
+            });
+          } catch (error) {
+            // SKILL.md might not exist in this directory
+            console.log(`⚠️  No SKILL.md found in ${dir.name}`);
+          }
+        }
+      }
+    } catch (error) {
+      // .agents/skills directory might not exist yet - this is expected on first run
+      console.log(`⚠️  Skills CLI directory not found (.agents/skills) - will be created when skills are installed`);
+    }
+    
     return skills;
   }
 
@@ -144,7 +173,7 @@ class SkillManager {
 
   /**
    * Remove a skill by filename
-   * @param {string} skillName - Name of the skill file (e.g., "skill.md")
+   * @param {string} skillName - Name of the skill file (e.g., "skill.md") or skill directory name
    * @returns {Promise<boolean>} - Success status
    */
   async removeSkill(skillName) {
@@ -164,6 +193,31 @@ class SkillManager {
           // Skill not in this directory, try next
           continue;
         }
+      }
+      
+      // Check if it's a skill installed via skills CLI
+      // For skills CLI, use the npx skills remove command
+      const agentsSkillsPath = path.join('.agents/skills', skillName);
+      try {
+        await fs.access(agentsSkillsPath);
+        
+        // Validate skillName to prevent command injection
+        // Only allow alphanumeric characters, hyphens, and underscores
+        const validSkillNamePattern = /^[a-zA-Z0-9_-]+$/;
+        if (!validSkillNamePattern.test(skillName)) {
+          throw new Error('Invalid skill name: must contain only alphanumeric characters, hyphens, or underscores');
+        }
+        
+        // Use npx skills remove to properly uninstall
+        // Input is validated above to prevent command injection
+        execSync(`npx -y skills remove ${skillName} --yes`, {
+          cwd: process.cwd(),
+          stdio: 'inherit'
+        });
+        console.log(`✓ Removed skill: ${skillName} from skills-cli`);
+        return true;
+      } catch (error) {
+        // Not a skills-cli skill either
       }
       
       // If we get here, skill was not found in any directory

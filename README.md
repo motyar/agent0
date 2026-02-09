@@ -124,6 +124,18 @@ See [skills/README.md](skills/README.md) for details on creating skills.
 
 Agent0 supports <a href="https://skills.sh">Skills.sh</a> for extending capabilities with community-driven skills.
 
+### Pre-installed: find-skills
+
+Agent0 comes with the **find-skills** skill from vercel-labs/skills pre-installed! This skill helps you discover and install additional skills from the ecosystem. Just ask:
+
+```
+You: How do I improve React performance?
+Agent0: I found a skill that might help! The "vercel-react-best-practices" skill...
+
+You: Find a skill for API testing
+Agent0: Let me search for API testing skills...
+```
+
 ### Natural Language Skill Management
 
 Skills can be managed through natural conversation with the agent:
@@ -133,7 +145,8 @@ You: Install the vercel/code-review skill from Skills.sh
 Agent0: I've successfully installed the vercel/code-review skill!
 
 You: Show me what skills are installed
-Agent0: I have 2 skills installed: code-review.md (managed) and example-skill.md (workspace)
+Agent0: I have 3 skills installed: find-skills (skills-cli), code-review.md (managed), 
+        and example-skill.md (workspace)
 
 You: Remove the code-review.md skill
 Agent0: Successfully removed the code-review.md skill!
@@ -155,11 +168,12 @@ Browse thousands of skills at <a href="https://skills.sh">skills.sh</a>
 
 ### How It Works
 
-1. Ask the agent to install skills using natural language (e.g., "install the vercel/code-review skill")
-2. Skills (SKILL.md files) are stored in `skills/managed/` or `skills/workspace/`
-3. Agent loads skills at startup and injects them into its context
-4. Skills enhance the agent's knowledge and capabilities
-5. Manage skills dynamically through natural conversation
+1. The **find-skills** skill is automatically installed via GitHub Actions workflow
+2. Ask the agent to find or install skills using natural language (e.g., "find a skill for X")
+3. Skills (SKILL.md files) are stored in `.agents/skills/`, `skills/managed/`, or `skills/workspace/`
+4. Agent loads skills at startup and injects them into its context
+5. Skills enhance the agent's knowledge and capabilities
+6. Manage skills dynamically through natural conversation
 
 ### 🔧 Creating PRs via Bot
 
