@@ -192,15 +192,36 @@ You remember all conversations and maintain context. Be helpful, transparent abo
   }
 }
 
-// Run and handle cleanup
-run().catch(console.error).finally(async () => {
-  // Stop Copilot client if it was started
+// Cleanup function
+async function cleanup() {
   if (copilotReady) {
     try {
+      console.log("Stopping Copilot SDK client...");
       await copilotClient.stop();
       console.log("Copilot SDK client stopped");
+      copilotReady = false;
     } catch (error) {
       console.error("Error stopping Copilot SDK client:", error);
     }
   }
+}
+
+// Handle process termination signals
+process.on('SIGINT', async () => {
+  console.log('\nReceived SIGINT, cleaning up...');
+  await cleanup();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\nReceived SIGTERM, cleaning up...');
+  await cleanup();
+  process.exit(0);
+});
+
+// Run
+run().catch(async (error) => {
+  console.error("Fatal error:", error);
+  await cleanup();
+  process.exit(1);
 });
