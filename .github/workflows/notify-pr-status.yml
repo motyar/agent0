@@ -45,7 +45,6 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           node -e "
-          const fetch = require('node-fetch');
           const token = process.env.TELEGRAM_BOT_TOKEN;
           const userId = process.env.USER_ID;
           const prNumber = process.env.PR_NUMBER;
@@ -80,7 +79,6 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           node -e "
-          const fetch = require('node-fetch');
           const token = process.env.TELEGRAM_BOT_TOKEN;
           const userId = process.env.USER_ID;
           const prNumber = process.env.PR_NUMBER;
@@ -115,7 +113,6 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           node -e "
-          const fetch = require('node-fetch');
           const token = process.env.TELEGRAM_BOT_TOKEN;
           const userId = process.env.USER_ID;
           const prNumber = process.env.PR_NUMBER;
