@@ -1,0 +1,124 @@
+name: Process Code Change PRs
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  process-code-change:
+    # Only run for PRs with the agent-code-change label
+    if: contains(github.event.pull_request.labels.*.name, 'agent-code-change')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Extract task description from PR
+        id: extract_task
+        run: |
+          TASK=$(echo "${{ github.event.pull_request.body }}" | grep -A 1 "^\*\*Task:\*\*" | tail -n 1 | sed 's/^[[:space:]]*//')
+          if [ -z "$TASK" ]; then
+            echo "No task found in PR body"
+            exit 1
+          fi
+          echo "task=$TASK" >> $GITHUB_OUTPUT
+          echo "Extracted task: $TASK"
+      
+      - name: Process code changes with Claude Sonnet 4.5
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          TASK_DESCRIPTION: ${{ steps.extract_task.outputs.task }}
+        run: |
+          node src/code-change-processor.js
+      
+      - name: Commit and push changes
+        run: |
+          git config user.name "Agent0 Bot"
+          git config user.email "agent0-bot@users.noreply.github.com"
+          
+          # Check if there are any changes to commit
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "🤖 Implement code changes via Agent0
+
+Task: ${{ steps.extract_task.outputs.task }}
+
+Processed by Claude Sonnet 4.5"
+            git push origin ${{ github.event.pull_request.head.ref }}
+            echo "Changes committed and pushed"
+          else
+            echo "No changes to commit"
+          fi
+      
+      - name: Update PR with status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let statusComment = '✅ **Code changes have been processed by Agent0**\n\n';
+            statusComment += '🤖 **Model used:** Claude Sonnet 4.5\n';
+            statusComment += '📝 **Task:** ${{ steps.extract_task.outputs.task }}\n\n';
+            
+            // Check if changes were made
+            const { data: commits } = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+            
+            if (commits.length > 1) {
+              statusComment += '✨ **Status:** Implementation complete\n\n';
+              statusComment += '**Next steps:**\n';
+              statusComment += '1. Review the changes made\n';
+              statusComment += '2. Test the implementation\n';
+              statusComment += '3. Approve and merge if everything looks good\n\n';
+              statusComment += '💡 The requester will be notified when you approve this PR.';
+            } else {
+              statusComment += '⚠️ **Status:** No changes were made\n\n';
+              statusComment += 'The agent determined that no changes were necessary, or encountered an issue.';
+            }
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: statusComment
+            });
+            
+            // Update label to indicate it's ready for review
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              name: 'needs-review'
+            }).catch(() => {});
+            
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['ready-for-review']
+            });

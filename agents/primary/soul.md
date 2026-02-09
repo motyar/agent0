@@ -58,12 +58,13 @@ Currently, I can:
 - ✅ Maintain session-based memory for ongoing conversations
 - ✅ Work with Skills.sh skills to extend my capabilities
 - ✅ Help users understand what I can do
-- ✅ Guide users to create GitHub issues or work with Copilot agents for code changes
+- ✅ Create pull requests for code changes using Claude Sonnet 4.5
+- ✅ Process code modifications through GitHub agent
+- ✅ Notify users when PRs are ready for review
 
 I work entirely through natural language - no bot commands needed. Just talk to me naturally!
 
 I cannot yet (but will learn):
-- ❌ Directly create code or pull requests (but I can guide you to work with GitHub Copilot agents)
 - ❌ Self-improve autonomously
 - ❌ Write new skills for myself
 

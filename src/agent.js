@@ -103,6 +103,17 @@ class Agent0 {
           maximum: 10,
           default: 5
         }))
+      }),
+      create_code_change_pr: Type.Object({
+        description: Type.String({
+          description: 'Detailed description of the code changes to make',
+          minLength: 10,
+          maxLength: 2000
+        }),
+        files_context: Type.Optional(Type.String({
+          description: 'Specific files or areas of the codebase to focus on',
+          maxLength: 500
+        }))
       })
     };
   }
@@ -289,6 +300,27 @@ class Agent0 {
               }
             },
             required: ['taskId']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'create_code_change_pr',
+          description: 'Create a pull request with code changes. Use this when users ask to improve code, modify code, fix bugs, add features, or make any code changes. The GitHub agent will process the request using Claude Sonnet 4.5 and create a PR for review.',
+          parameters: {
+            type: 'object',
+            properties: {
+              description: {
+                type: 'string',
+                description: 'Detailed description of the code changes to make. Be specific about what needs to be changed, added, or fixed.'
+              },
+              files_context: {
+                type: 'string',
+                description: 'Optional: Specific files or areas of the codebase to focus on (e.g., "src/agent.js", "authentication logic")'
+              }
+            },
+            required: ['description']
           }
         }
       }
@@ -570,6 +602,10 @@ Respond now:`;
           
         case 'get_task_status':
           result = await this.handleToolGetTaskStatus(args.taskId);
+          break;
+          
+        case 'create_code_change_pr':
+          result = await this.handleToolCreateCodeChangePR(message, args.description, args.files_context);
           break;
           
         default:
@@ -947,6 +983,111 @@ Respond now:`;
       return {
         success: false,
         message: `Failed to get task status: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Tool handler: Create code change PR using GitHub agent with Claude Sonnet 4.5
+   */
+  async handleToolCreateCodeChangePR(message, description, files_context = '') {
+    try {
+      console.log('🔧 Creating code change PR via GitHub agent...');
+      
+      if (!this.github.isAvailable()) {
+        return {
+          success: false,
+          message: 'GitHub integration is not available. GITHUB_TOKEN is required.'
+        };
+      }
+      
+      // Generate branch name
+      const timestamp = Date.now();
+      const sanitizedTask = description
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .substring(0, 50)
+        .replace(/^-|-$/g, '');
+      
+      const branchName = `agent-code-change/${sanitizedTask}-${timestamp}`;
+      
+      // Create branch
+      await this.github.createBranch(branchName);
+      console.log(`✅ Created branch: ${branchName}`);
+      
+      // Create initial commit to ensure branch differs from main
+      await this.github.createInitialCommit(branchName, description);
+      console.log(`✅ Created initial commit on branch`);
+      
+      // Create PR with detailed description
+      const prTitle = `Code Change: ${description.substring(0, 100)}`;
+      const contextSection = files_context ? `\n\n### Files/Context\n${files_context}` : '';
+      
+      const prBody = `## Automated Code Change Request
+
+**Requested by:** @${message.username || 'telegram-user'} (User ID: ${message.user_id})
+**Task:** ${description}${contextSection}
+
+### Instructions for GitHub Agent
+
+This PR was created by Agent0 based on a user request. The changes should be implemented using **Claude Sonnet 4.5** model for optimal code quality.
+
+**Task Details:**
+${description}
+
+### Implementation Steps
+
+1. Analyze the codebase and understand the context
+2. Make the necessary code changes following best practices
+3. Ensure code quality and consistency with existing code
+4. Add or update tests if applicable
+5. Update documentation if needed
+
+---
+🤖 Created by Agent0 Bot | Powered by Claude Sonnet 4.5
+`;
+      
+      const pr = await this.github.createPullRequest({
+        title: prTitle,
+        body: prBody,
+        head: branchName,
+        base: 'main'
+      });
+      
+      // Add labels
+      await this.github.addLabels(pr.number, ['agent-code-change', 'needs-review']);
+      
+      console.log(`✅ Created PR #${pr.number}: ${pr.html_url}`);
+      
+      // Send notification to user via Telegram with PR link
+      const notificationMessage = `✅ I've created PR #${pr.number} for your code changes!\n\n📝 **Task:** ${description}\n\n🔗 **PR Link:** ${pr.html_url}\n\n⚠️ **Next Steps:**\n1. Review the PR once the GitHub agent completes the changes\n2. Test the changes if needed\n3. Approve and merge when ready\n\nThe PR will be processed by the GitHub agent using Claude Sonnet 4.5 model.`;
+      
+      await this.telegram.sendMessage(message.chat_id, notificationMessage);
+      
+      return {
+        success: true,
+        pr_number: pr.number,
+        pr_url: pr.html_url,
+        branch: branchName,
+        message: `Successfully created PR #${pr.number}. User has been notified.`
+      };
+      
+    } catch (error) {
+      console.error('❌ Failed to create code change PR:', error);
+      
+      // Try to notify user of failure
+      try {
+        await this.telegram.sendMessage(
+          message.chat_id,
+          `❌ Sorry, I encountered an error creating the PR: ${error.message}\n\nPlease try again or contact support.`
+        );
+      } catch (notifyError) {
+        console.error('Failed to send error notification:', notifyError);
+      }
+      
+      return {
+        success: false,
+        message: `Failed to create PR: ${error.message}`
       };
     }
   }
