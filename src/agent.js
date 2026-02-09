@@ -14,6 +14,7 @@ import AgentRouter from './agent-router.js';
 import Sandbox from './sandbox.js';
 import HotReload from './hot-reload.js';
 import WebSearch from './web-search.js';
+import TaskQueue from './task-queue.js';
 
 class Agent0 {
   constructor(options = {}) {
@@ -27,6 +28,7 @@ class Agent0 {
     this.skills = new SkillsManager();
     this.skillManager = new SkillManager('./skills');
     this.github = new GitHubService();
+    this.taskQueue = new TaskQueue();
     
     // Phase 3 features
     this.router = new AgentRouter();
@@ -247,6 +249,72 @@ class Agent0 {
             required: ['query']
           }
         }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'create_task',
+          description: 'Create a new task in the queue. Tasks are processed asynchronously one by one.',
+          parameters: {
+            type: 'object',
+            properties: {
+              description: {
+                type: 'string',
+                description: 'Description of the task to perform'
+              },
+              type: {
+                type: 'string',
+                description: 'Type of task (general, code, research, etc.)',
+                enum: ['general', 'code', 'research', 'skill', 'memory']
+              },
+              params: {
+                type: 'object',
+                description: 'Additional parameters for the task'
+              }
+            },
+            required: ['description']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'list_tasks',
+          description: 'List tasks in the queue. Can filter by status (pending, processing, completed, failed).',
+          parameters: {
+            type: 'object',
+            properties: {
+              status: {
+                type: 'string',
+                description: 'Filter by task status',
+                enum: ['pending', 'processing', 'completed', 'failed', 'all']
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum number of tasks to return',
+                minimum: 1,
+                maximum: 20
+              }
+            }
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'get_task_status',
+          description: 'Get the status and details of a specific task by its ID.',
+          parameters: {
+            type: 'object',
+            properties: {
+              taskId: {
+                type: 'string',
+                description: 'The task ID to check'
+              }
+            },
+            required: ['taskId']
+          }
+        }
       }
     ];
   }
@@ -264,6 +332,7 @@ class Agent0 {
     // Initialize subsystems
     await this.scheduler.initialize();
     await this.skills.initialize();
+    await this.taskQueue.initialize();
     
     // Initialize Skills.sh integration
     await this.skillManager.ensureDirectories();
@@ -313,8 +382,11 @@ ${skillsSection}
 - Be honest about your limitations
 - Keep responses concise (under 300 words)
 - Use your memory of past conversations
-- You have access to tools for skill management and PR creation
-- When users ask to install skills, list skills, remove skills, or create PRs, use the appropriate tools`;
+- You have access to tools for skill management, PR creation, and task queue management
+- When users ask to do something complex, you can create a task for asynchronous processing
+- Tasks are processed one by one in the background and users are notified when complete
+- Users can check task status using the task management tools
+- When users ask to install skills, list skills, remove skills, create PRs, or manage tasks, use the appropriate tools`;
 
     const userPrompt = `**CONVERSATION HISTORY:**
 ${conversationContext || 'No previous conversation'}
@@ -513,6 +585,18 @@ Respond now:`;
           
         case 'semantic_memory_search':
           result = await this.handleToolSemanticMemorySearch(message.user_id, args.query, args.limit);
+          break;
+          
+        case 'create_task':
+          result = await this.handleToolCreateTask(message, args.description, args.type, args.params);
+          break;
+          
+        case 'list_tasks':
+          result = await this.handleToolListTasks(message.user_id, args.status, args.limit);
+          break;
+          
+        case 'get_task_status':
+          result = await this.handleToolGetTaskStatus(args.taskId);
           break;
           
         default:
@@ -825,6 +909,121 @@ Respond now:`;
     }
   }
 
+  /**
+   * Tool handler: Create a new task
+   */
+  async handleToolCreateTask(message, description, type = 'general', params = {}) {
+    try {
+      const task = await this.taskQueue.enqueueTask({
+        userId: message.user_id,
+        username: message.username,
+        chatId: message.chat_id,
+        description,
+        type,
+        params
+      });
+      
+      // Save task creation to memory
+      const taskInfo = `Created task: ${description} (ID: ${task.id}, Type: ${type})`;
+      await this.memory.remember(message.user_id, `Create task: ${description}`, taskInfo);
+      
+      return {
+        success: true,
+        task: {
+          id: task.id,
+          description: task.description,
+          type: task.type,
+          status: task.status,
+          createdAt: task.createdAt
+        },
+        message: `Task created successfully! ID: ${task.id}. It will be processed asynchronously.`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to create task: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Tool handler: List tasks
+   */
+  async handleToolListTasks(userId, status = null, limit = 10) {
+    try {
+      let tasks;
+      
+      if (status && status !== 'all') {
+        tasks = await this.taskQueue.getUserTasks(userId, status);
+      } else {
+        tasks = await this.taskQueue.getUserTasks(userId);
+      }
+      
+      // Limit results
+      tasks = tasks.slice(-limit).reverse();
+      
+      const stats = await this.taskQueue.getStats();
+      
+      return {
+        success: true,
+        tasks: tasks.map(t => ({
+          id: t.id,
+          description: t.description,
+          type: t.type,
+          status: t.status,
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt
+        })),
+        count: tasks.length,
+        stats,
+        message: `Found ${tasks.length} task(s)${status ? ` with status: ${status}` : ''}`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to list tasks: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Tool handler: Get task status
+   */
+  async handleToolGetTaskStatus(taskId) {
+    try {
+      const task = await this.taskQueue.getTask(taskId);
+      
+      if (!task) {
+        return {
+          success: false,
+          message: `Task not found: ${taskId}`
+        };
+      }
+      
+      return {
+        success: true,
+        task: {
+          id: task.id,
+          description: task.description,
+          type: task.type,
+          status: task.status,
+          createdAt: task.createdAt,
+          updatedAt: task.updatedAt,
+          startedAt: task.startedAt,
+          completedAt: task.completedAt,
+          failedAt: task.failedAt,
+          error: task.error
+        },
+        message: `Task status: ${task.status}`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to get task status: ${error.message}`
+      };
+    }
+  }
+
   async updateStats(messageCount) {
     try {
       console.log('📊 Updating agent statistics...');
@@ -1005,6 +1204,197 @@ IMPORTANT: All file paths must be relative to the repository root and must not c
   }
 
   /**
+   * Process tasks from the task queue asynchronously
+   * Tasks are processed one by one
+   */
+  async processTasks() {
+    try {
+      console.log('🔄 Starting task processing...');
+      
+      // Get next pending task
+      const task = await this.taskQueue.getNextTask();
+      
+      if (!task) {
+        console.log('✅ No pending tasks to process');
+        return;
+      }
+      
+      console.log(`📋 Processing task ${task.id}: ${task.description}`);
+      
+      // Mark as processing
+      await this.taskQueue.markTaskProcessing(task.id);
+      
+      try {
+        // Process the task based on type
+        let result;
+        
+        switch (task.type) {
+          case 'code':
+            result = await this.processCodeTask(task);
+            break;
+          case 'research':
+            result = await this.processResearchTask(task);
+            break;
+          case 'skill':
+            result = await this.processSkillTask(task);
+            break;
+          case 'memory':
+            result = await this.processMemoryTask(task);
+            break;
+          case 'general':
+          default:
+            result = await this.processGeneralTask(task);
+            break;
+        }
+        
+        // Mark task as complete
+        await this.taskQueue.completeTask(task.id, result);
+        
+        // Send notification to user about completion
+        await this.telegram.sendMessage(
+          task.chatId,
+          `✅ Task completed!\n\n📋 Task: ${task.description}\n🆔 ID: ${task.id}\n\n${result.message || 'Task finished successfully.'}`
+        );
+        
+        // Save task completion to memory
+        await this.memory.remember(
+          task.userId,
+          `Task ${task.id}: ${task.description}`,
+          `Task completed successfully. ${result.message || ''}`
+        );
+        
+        console.log(`✅ Task ${task.id} completed successfully`);
+        
+      } catch (error) {
+        console.error(`❌ Task ${task.id} failed:`, error);
+        
+        // Mark task as failed
+        await this.taskQueue.failTask(task.id, error.message);
+        
+        // Notify user about failure
+        await this.telegram.sendMessage(
+          task.chatId,
+          `❌ Task failed!\n\n📋 Task: ${task.description}\n🆔 ID: ${task.id}\n\n⚠️ Error: ${error.message}`
+        );
+        
+        // Save task failure to memory
+        await this.memory.remember(
+          task.userId,
+          `Task ${task.id}: ${task.description}`,
+          `Task failed with error: ${error.message}`
+        );
+      }
+      
+      // Clean up old tasks
+      await this.taskQueue.cleanup();
+      
+    } catch (error) {
+      console.error('❌ Fatal error during task processing:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process a general task
+   */
+  async processGeneralTask(task) {
+    // Use LLM to process the task
+    const prompt = `Process this task: ${task.description}\n\nParameters: ${JSON.stringify(task.params)}`;
+    
+    const response = await this.openai.chat.completions.create({
+      model: this.identity?.model?.name || 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are Agent0, processing a task asynchronously. Provide a clear and helpful response.' },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 1000
+    });
+    
+    return {
+      success: true,
+      message: response.choices[0].message.content
+    };
+  }
+
+  /**
+   * Process a code task
+   */
+  async processCodeTask(task) {
+    // Execute code in sandbox if available
+    if (task.params.code) {
+      const result = await this.sandbox.execute(task.params.code, task.params.language || 'javascript');
+      return {
+        success: true,
+        message: `Code execution result:\n\`\`\`\n${result.output}\n\`\`\``,
+        output: result.output
+      };
+    }
+    
+    return {
+      success: false,
+      message: 'No code provided in task parameters'
+    };
+  }
+
+  /**
+   * Process a research task
+   */
+  async processResearchTask(task) {
+    // Use web search for research
+    const query = task.params.query || task.description;
+    const searchResults = await this.webSearch.search(query, { maxResults: 5 });
+    
+    return {
+      success: true,
+      message: `Research results for: ${query}\n\n${searchResults.map((r, i) => 
+        `${i + 1}. ${r.title}\n   ${r.snippet}\n   ${r.url}`
+      ).join('\n\n')}`,
+      results: searchResults
+    };
+  }
+
+  /**
+   * Process a skill task
+   */
+  async processSkillTask(task) {
+    // Install or manage skills
+    if (task.params.action === 'install' && task.params.ownerRepo) {
+      const result = await this.skillManager.installSkill(task.params.ownerRepo);
+      return {
+        success: result,
+        message: result ? `Successfully installed skill: ${task.params.ownerRepo}` : `Failed to install skill: ${task.params.ownerRepo}`
+      };
+    }
+    
+    return {
+      success: false,
+      message: 'Invalid skill task parameters'
+    };
+  }
+
+  /**
+   * Process a memory task
+   */
+  async processMemoryTask(task) {
+    // Search or analyze memory
+    if (task.params.action === 'search' && task.params.query) {
+      const results = await this.memory.search(task.userId, task.params.query, { limit: 5 });
+      return {
+        success: true,
+        message: `Found ${results.length} relevant conversations:\n\n${results.map((r, i) =>
+          `${i + 1}. ${r.timestamp}\n   User: ${r.user.substring(0, 50)}...\n   Bot: ${r.bot.substring(0, 50)}...`
+        ).join('\n\n')}`,
+        results
+      };
+    }
+    
+    return {
+      success: false,
+      message: 'Invalid memory task parameters'
+    };
+  }
+
+  /**
    * Cleanup and shutdown
    */
   async shutdown() {
@@ -1031,6 +1421,18 @@ if (command === 'process') {
     console.error('Fatal error:', err);
     process.exit(1);
   });
+} else if (command === 'process-tasks') {
+  const agent = new Agent0();
+  agent.initialize()
+    .then(() => agent.processTasks())
+    .then(() => {
+      console.log('✅ Task processing complete');
+      process.exit(0);
+    })
+    .catch(error => {
+      console.error('❌ Error processing tasks:', error);
+      process.exit(1);
+    });
 } else if (command === 'process-pr') {
   const prNumber = parseInt(process.argv[3]);
   
@@ -1052,7 +1454,7 @@ if (command === 'process') {
       process.exit(1);
     });
 } else {
-  console.log('Usage: node agent.js [process|process-pr <pr-number>]');
+  console.log('Usage: node agent.js [process|process-tasks|process-pr <pr-number>]');
   process.exit(1);
 }
 
