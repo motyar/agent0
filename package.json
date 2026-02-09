@@ -16,10 +16,10 @@
   "author": "motyar",
   "license": "MIT",
   "dependencies": {
-    "@octokit/rest": "^20.0.2",
-    "openai": "^4.0.0"
+    "@github/copilot-sdk": "^0.1.23",
+    "@octokit/rest": "^20.0.2"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=24.0.0"
   }
 }
