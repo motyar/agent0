@@ -1,29 +1,22 @@
 {
   "name": "agent0",
   "version": "1.0.0",
-  "description": "Self-improving AI agent running on GitHub Actions",
+  "description": "Simplified AI agent running on GitHub Actions",
   "type": "module",
-  "main": "src/agent.js",
+  "main": "src/bot.js",
   "scripts": {
-    "start": "node src/agent.js",
-    "poll": "node src/telegram.js poll",
-    "test": "node test/task-queue.test.js"
+    "start": "node src/bot.js"
   },
   "keywords": [
     "ai",
     "agent",
     "telegram",
-    "self-improving",
     "github-actions"
   ],
   "author": "motyar",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.0",
     "@octokit/rest": "^20.0.2",
-    "@sinclair/typebox": "^0.32.0",
-    "chokidar": "^3.5.3",
-    "cron": "^3.1.7",
     "openai": "^4.0.0"
   },
   "engines": {

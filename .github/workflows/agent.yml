@@ -1,4 +1,4 @@
-name: Simplified Agent Workflow
+name: Agent0
 
 on:
   schedule:
@@ -24,47 +24,26 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install find-skills
+      - name: Ensure directories
         run: |
-          # Install find-skills skill from vercel-labs/skills if not already installed
-          if [ ! -d ".agents/skills/find-skills" ]; then
-            npx -y skills add https://github.com/vercel-labs/skills --skill find-skills --yes
-          else
-            echo "find-skills already installed"
-          fi
-
-      - name: Ensure skill directories
-        run: |
-          mkdir -p skills/managed
-          mkdir -p skills/workspace
           mkdir -p memory/sessions
           mkdir -p memory/conversations
           mkdir -p memory/embeddings
-          mkdir -p queue/tasks
+          mkdir -p queue
 
       - name: Run Agent
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: node src/bot.js
-
-      - name: Process Tasks
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: node src/agent.js process-tasks || echo "No tasks to process"
 
       - name: Commit State
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add queue/last_id.json
-          git add queue/tasks/
-          git add .agents/skills/
-          git add skills/managed/
           git add memory/
-          git commit -m "Update state: last message ID, tasks, skills, and memory sessions" || echo "No changes to commit"
+          git commit -m "Update state and memory" || echo "No changes to commit"
           git push

@@ -1,17 +1,14 @@
 #!/usr/bin/env node
 
-import Logger from './logger.js';
-
 /**
  * GitHub Service - Handle GitHub operations including PR creation
  */
 class GitHubService {
   constructor() {
     this.token = process.env.GITHUB_TOKEN;
-    this.logger = new Logger({ level: 'info' });
     
     if (!this.token) {
-      this.logger.warn('GITHUB_TOKEN not set - GitHub operations will be limited');
+      console.warn('GITHUB_TOKEN not set - GitHub operations will be limited');
     }
 
     // Extract owner and repo from git remote or environment
@@ -50,7 +47,7 @@ class GitHubService {
       options.body = JSON.stringify(body);
     }
 
-    this.logger.debug(`GitHub API ${method} ${endpoint}`);
+    console.debug(`GitHub API ${method} ${endpoint}`);
 
     const response = await fetch(url, options);
     
@@ -70,7 +67,7 @@ class GitHubService {
    * Create a new branch
    */
   async createBranch(branchName, baseBranch = 'main') {
-    this.logger.info(`Creating branch: ${branchName} from ${baseBranch}`);
+    console.log(`Creating branch: ${branchName} from ${baseBranch}`);
 
     // Get the SHA of the base branch
     const baseRef = await this.api(`/repos/${this.owner}/${this.repo}/git/ref/heads/${baseBranch}`);
@@ -82,7 +79,7 @@ class GitHubService {
       sha: baseSha
     });
 
-    this.logger.info(`Branch created: ${branchName}`);
+    console.log(`Branch created: ${branchName}`);
     return newRef;
   }
 
@@ -90,7 +87,7 @@ class GitHubService {
    * Create a pull request
    */
   async createPullRequest({ title, body, head, base = 'main' }) {
-    this.logger.info(`Creating PR: ${title}`);
+    console.log(`Creating PR: ${title}`);
 
     const pr = await this.api(`/repos/${this.owner}/${this.repo}/pulls`, 'POST', {
       title,
@@ -99,7 +96,7 @@ class GitHubService {
       base
     });
 
-    this.logger.info(`PR created: #${pr.number} - ${pr.html_url}`);
+    console.log(`PR created: #${pr.number} - ${pr.html_url}`);
     return pr;
   }
 
@@ -108,7 +105,7 @@ class GitHubService {
    * This ensures the branch has at least one commit different from base
    */
   async createInitialCommit(branchName, taskDescription) {
-    this.logger.info(`Creating initial commit on branch: ${branchName}`);
+    console.log(`Creating initial commit on branch: ${branchName}`);
 
     // Get the current commit SHA of the branch
     const branchRef = await this.api(`/repos/${this.owner}/${this.repo}/git/ref/heads/${branchName}`);
@@ -164,7 +161,7 @@ GitHub requires at least one commit difference to create a pull request.
       force: false
     });
 
-    this.logger.info(`Initial commit created on branch: ${branchName}`);
+    console.log(`Initial commit created on branch: ${branchName}`);
     return newCommit;
   }
 
@@ -172,7 +169,7 @@ GitHub requires at least one commit difference to create a pull request.
    * Add labels to a pull request
    */
   async addLabels(prNumber, labels) {
-    this.logger.info(`Adding labels to PR #${prNumber}: ${labels.join(', ')}`);
+    console.log(`Adding labels to PR #${prNumber}: ${labels.join(', ')}`);
 
     await this.api(`/repos/${this.owner}/${this.repo}/issues/${prNumber}/labels`, 'POST', {
       labels
@@ -240,7 +237,7 @@ The task should be implemented following the repository's conventions and best p
       };
 
     } catch (error) {
-      this.logger.error(`Failed to create task PR: ${error.message}`);
+      console.error(`Failed to create task PR: ${error.message}`);
       throw error;
     }
   }
