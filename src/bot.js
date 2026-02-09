@@ -1,14 +1,14 @@
 import fs from 'fs/promises';
 import MemoryEngine from './memory-engine.js';
-import SkillManager from './skillManager.js';
+import GitHubService from './github-service.js';
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const STATE_FILE = 'queue/last_id.json';
 
-// Initialize memory and skill manager
+// Initialize memory and GitHub service
 const memory = new MemoryEngine();
-const skillManager = new SkillManager('./skills');
+const github = new GitHubService();
 
 async function run() {
   // 1. Load state
@@ -37,6 +37,7 @@ async function run() {
     const chatId = update.message?.chat?.id;
     const text = update.message?.text;
     const userId = update.message?.from?.id;
+    const username = update.message?.from?.username || 'user';
 
     if (chatId && text && userId) {
       console.log(`Processing message from ${chatId}: ${text}`);
@@ -44,9 +45,6 @@ async function run() {
       try {
         // 3. Get session context
         const sessionContext = await memory.getSessionContext(userId);
-
-        // Load skills context
-        const skillsContext = await skillManager.getSkillsContext();
 
         // Load soul/personality
         let soul = '';
@@ -56,20 +54,18 @@ async function run() {
           console.log("Could not load soul.md");
         }
 
-        // Build system prompt with session memory and skills
+        // Build system prompt with session memory
         const systemPrompt = `You are Agent0, an autonomous AI agent living in a GitHub repository.
 
 ${soul}
 
-${skillsContext ? `\n## Available Skills\n${skillsContext}\n` : ''}
-
 ${sessionContext ? `\n## Session Context\n${sessionContext}\n` : ''}
 
-You can help users with natural language requests. When users ask you to perform tasks like writing code, installing packages, or making changes, explain that you can create a GitHub issue or work with GitHub Copilot agents to help implement those changes through pull requests.
+You can help users with natural language requests. When users ask you to perform tasks like writing code, installing packages, or making changes, you can create a GitHub pull request using the createPR tool.
 
 You remember all conversations and maintain context. Be helpful, transparent about your capabilities, and always preserve your personality.`;
 
-        // 4. Get AI Response
+        // 4. Get AI Response with function calling
         const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -81,7 +77,27 @@ You remember all conversations and maintain context. Be helpful, transparent abo
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: text }
-            ]
+            ],
+            tools: [
+              {
+                type: 'function',
+                function: {
+                  name: 'createPR',
+                  description: 'Create a GitHub pull request for a code change task. Use this when the user requests code changes, new features, bug fixes, or any modifications to the repository.',
+                  parameters: {
+                    type: 'object',
+                    properties: {
+                      taskDescription: {
+                        type: 'string',
+                        description: 'Clear description of the task to be implemented'
+                      }
+                    },
+                    required: ['taskDescription']
+                  }
+                }
+              }
+            ],
+            tool_choice: 'auto'
           })
         });
 
@@ -95,7 +111,37 @@ You remember all conversations and maintain context. Be helpful, transparent abo
           console.error("Invalid OpenAI API response structure");
           continue;
         }
-        const replyText = aiData.choices[0].message.content;
+        
+        const message = aiData.choices[0].message;
+        let replyText = message.content || '';
+
+        // Handle tool calls
+        if (message.tool_calls && message.tool_calls.length > 0) {
+          for (const toolCall of message.tool_calls) {
+            if (toolCall.function.name === 'createPR') {
+              try {
+                const args = JSON.parse(toolCall.function.arguments);
+                console.log(`Creating PR for task: ${args.taskDescription}`);
+                
+                const result = await github.createTaskPR({
+                  taskDescription: args.taskDescription,
+                  requestedBy: username,
+                  userId: userId
+                });
+                
+                replyText = `✅ I've created a pull request for your request!\n\n📝 **Task:** ${args.taskDescription}\n\n🔗 **PR Link:** ${result.pr_url}\n\n🤖 The changes will be implemented by GitHub Copilot. I'll notify you once the PR is ready for review!`;
+              } catch (error) {
+                console.error("Error creating PR:", error);
+                replyText = `❌ I encountered an error creating the PR: ${error.message}`;
+              }
+            }
+          }
+        }
+
+        // If no reply text and no tool calls, provide a default response
+        if (!replyText) {
+          replyText = "I processed your message but don't have a specific response. Please try again!";
+        }
 
         // 5. Save to memory (both long-term and session)
         await memory.remember(userId, text, replyText);
