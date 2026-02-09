@@ -25,7 +25,7 @@
     stealthy-require "^1.1.1"
     tough-cookie "^4.1.3"
 
-"@cypress/request@^3.0.0", "@cypress/request@^3.0.1":
+"@cypress/request@^3.0.0", "@cypress/request@^3.0.8":
   version "3.0.10"
   resolved "https://registry.npmjs.org/@cypress/request/-/request-3.0.10.tgz"
   integrity sha512-hauBrOdvu08vOsagkZ/Aju5XuiZx6ldsLfByg1htFeldhex+PeMrYauANzFsMJeAA0+dyPLbDoX2OYuvVoLDkQ==
@@ -1133,12 +1133,12 @@ node-fetch@^2.6.7:
   dependencies:
     whatwg-url "^5.0.0"
 
-node-telegram-bot-api@^0.66.0:
-  version "0.66.0"
-  resolved "https://registry.npmjs.org/node-telegram-bot-api/-/node-telegram-bot-api-0.66.0.tgz"
-  integrity sha512-s4Hrg5q+VPl4/tJVG++pImxF6eb8tNJNj4KnDqAOKL6zGU34lo9RXmyAN158njwGN+v8hdNf8s9fWIYW9hPb5A==
+node-telegram-bot-api@^0.67.0:
+  version "0.67.0"
+  resolved "https://registry.npmjs.org/node-telegram-bot-api/-/node-telegram-bot-api-0.67.0.tgz"
+  integrity sha512-gO7o/dPcdFSUuFuPiAYBxV7bcN+vQL3pfaHN8P4z8fPtFstN05xVmhMFOth57DANGDKBpzW3rMRo7debOlUI1w==
   dependencies:
-    "@cypress/request" "^3.0.1"
+    "@cypress/request" "^3.0.8"
     "@cypress/request-promise" "^5.0.0"
     array.prototype.findindex "^2.0.2"
     bl "^1.2.3"
