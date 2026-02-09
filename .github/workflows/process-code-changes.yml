@@ -61,11 +61,8 @@ jobs:
           # Check if there are any changes to commit
           if [ -n "$(git status --porcelain)" ]; then
             git add -A
-            git commit -m "🤖 Implement code changes via Agent0
-
-Task: ${{ steps.extract_task.outputs.task }}
-
-Processed by Claude Sonnet 4.5"
+            TASK_DESC="${{ steps.extract_task.outputs.task }}"
+            git commit -m "Implement code changes via Agent0" -m "Task: $TASK_DESC" -m "Processed by Claude Sonnet 4.5"
             git push origin ${{ github.event.pull_request.head.ref }}
             echo "Changes committed and pushed"
           else
