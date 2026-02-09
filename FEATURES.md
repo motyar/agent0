@@ -215,7 +215,146 @@ console.log(result.content);
 console.log(`Cost: $${result.cost.toFixed(4)}`);
 ```
 
-## PR Creation via Bot
+## Automated Code Changes via GitHub Agent
+
+Agent0 can automatically process code modification requests using Claude Sonnet 4.5 and create pull requests with the implemented changes.
+
+### How It Works
+
+1. **User Request**: Ask the agent to improve, modify, or fix code via Telegram
+2. **PR Creation**: Agent creates a branch and pull request automatically  
+3. **AI Processing**: GitHub Actions workflow processes the request using Claude Sonnet 4.5
+4. **Implementation**: Claude analyzes the codebase and implements the changes
+5. **Notification**: User receives notifications when PR is ready, approved, or merged
+
+### Usage
+
+**Natural Language Examples**:
+```
+You: Can you improve the error handling in src/agent.js?
+Agent0: ✅ I've created PR #123 for your code changes!
+        
+        📝 Task: Improve error handling in src/agent.js
+        🔗 PR Link: https://github.com/...
+        
+        The PR will be processed by the GitHub agent using Claude Sonnet 4.5.
+```
+
+```
+You: Fix the authentication bug in the login flow
+Agent0: ✅ I've created PR #124 to fix the authentication bug!
+        
+        The GitHub agent will implement the changes and notify you when ready.
+```
+
+```
+You: Add unit tests for the memory engine
+Agent0: ✅ Created PR #125 for adding unit tests!
+        
+        You'll be notified once the changes are ready for review.
+```
+
+### Workflow
+
+1. **Detection**: Agent detects code modification requests automatically
+2. **Branch**: Creates a new branch: `agent-code-change/[description]-[timestamp]`
+3. **PR**: Creates PR with detailed task description
+4. **Processing**: GitHub Actions triggers the code change processor
+5. **Claude Analysis**: Claude Sonnet 4.5 analyzes the codebase
+6. **Implementation**: Changes are committed to the PR branch
+7. **Notification**: User gets Telegram notification when ready
+8. **Review**: User reviews and approves the PR
+9. **Merge**: User merges or enables auto-merge
+10. **Confirmation**: User receives merge confirmation
+
+### Requirements
+
+**Environment Variables**:
+- `TELEGRAM_BOT_TOKEN` - Telegram bot API token
+- `ANTHROPIC_API_KEY` - Claude API key for Sonnet 4.5
+- `GITHUB_TOKEN` - GitHub access token (auto-provided)
+
+**Permissions** (in GitHub Actions):
+```yaml
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+```
+
+### PR Format
+
+Created PRs include:
+- **Title**: `Code Change: [task description]`
+- **Body**: Detailed instructions for the AI agent
+- **Labels**: `agent-code-change`, `needs-review`
+- **Branch**: `agent-code-change/[sanitized-task]-[timestamp]`
+- **Processor**: Claude Sonnet 4.5 model
+
+### Notifications
+
+Users receive Telegram notifications for:
+- ✅ PR created and processing started
+- ✅ PR approved by reviewer
+- 🎉 PR merged successfully
+- ❌ PR closed without merge
+
+### Implementation
+
+**Core Files**:
+- `src/agent.js` - Tool definition and handler (`create_code_change_pr`)
+- `src/github-service.js` - GitHub API integration
+- `src/code-change-processor.js` - Claude Sonnet 4.5 processor
+- `.github/workflows/process-code-changes.yml` - Processing workflow
+- `.github/workflows/notify-pr-status.yml` - Notification workflow
+
+**Features**:
+- Natural language understanding via OpenAI function calling
+- Claude Sonnet 4.5 for intelligent code analysis and generation
+- Automatic branch and PR creation
+- Real-time Telegram notifications
+- Comprehensive error handling
+- Status updates throughout the process
+- Support for file context hints
+
+### Configuration
+
+**Model Configuration** (`config/models.json`):
+```json
+{
+  "providers": {
+    "anthropic": {
+      "models": {
+        "claude-sonnet-4-5-20250514": {
+          "max_tokens": 8192,
+          "description": "Latest Claude Sonnet for code generation"
+        }
+      }
+    }
+  }
+}
+```
+
+**Agent Workflow** (`.github/workflows/agent.yml`):
+```yaml
+env:
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Advanced Usage
+
+**With File Context**:
+```
+You: Improve the authentication logic in src/auth.js and src/middleware/
+Agent0: I'll focus on those specific files when making the changes.
+```
+
+The agent can understand context hints and pass them to Claude for more targeted analysis.
+
+## PR Creation via Bot (Legacy)
 
 Create pull requests directly through natural language conversation with the agent.
 

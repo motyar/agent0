@@ -12,6 +12,8 @@ Agent0 is an autonomous AI agent that runs entirely on GitHub Actions, communica
 - **📝 Self-Aware**: Reads its own `soul.md` and understands its purpose
 - **🚀 Serverless**: No servers to maintain, runs on GitHub Actions
 - **🎯 Natural Language**: No bot commands - just chat naturally
+- **🤖 Automated Code Changes**: Creates PRs with AI-generated code using Claude Sonnet 4.5
+- **📬 Smart Notifications**: Real-time updates on PR status via Telegram
 
 ## 🏗️ Architecture
 
@@ -74,7 +76,7 @@ Add these secrets:
 
 - `TELEGRAM_BOT_TOKEN` - Your bot token from BotFather
 - `OPENAI_API_KEY` - Your OpenAI API key from [platform.openai.com](https://platform.openai.com)
-- `ANTHROPIC_API_KEY` - (Optional) Your Claude API key from [console.anthropic.com](https://console.anthropic.com)
+- `ANTHROPIC_API_KEY` - Your Claude API key from [console.anthropic.com](https://console.anthropic.com) **(Required for automated code changes)**
 
 ### 3. Enable GitHub Actions
 
@@ -105,11 +107,38 @@ Agent0: I can have conversations, remember them forever in Git, and help you wit
 You: Do you remember what we talked about?
 Agent0: Yes! Last time you asked me about...
 
-You: Can you help me write some code?
-Agent0: I can guide you to work with GitHub Copilot agents or help you create a GitHub issue for code changes...
+You: Can you help me improve the error handling in src/agent.js?
+Agent0: ✅ I've created PR #123 for your code changes! The GitHub agent will process this using Claude Sonnet 4.5 and implement the improvements. You'll be notified when it's ready for review.
 ```
 
 **Everything works with natural language - no bot commands needed!**
+
+### 🤖 Automated Code Changes
+
+Agent0 can automatically implement code changes for you:
+
+```
+You: Fix the authentication bug in login flow
+Agent0: ✅ I've created PR #124 to fix the authentication bug!
+        
+        📝 Task: Fix authentication bug in login flow
+        🔗 PR Link: https://github.com/motyar/agent0/pull/124
+        
+        ⚠️ Next Steps:
+        1. Review the PR once the GitHub agent completes
+        2. Test the changes if needed
+        3. Approve and merge when ready
+
+You: Add unit tests for the memory engine
+Agent0: ✅ Created PR #125! The changes will be implemented by Claude Sonnet 4.5.
+```
+
+**Features:**
+- 🎯 Natural language code requests
+- 🤖 Claude Sonnet 4.5 powered implementation
+- 📬 Telegram notifications for PR status
+- ✅ Automatic code analysis and generation
+- 🔄 Full workflow from request to merge
 
 ### 🎯 Skills System
 
@@ -265,12 +294,15 @@ npm run poll          # Poll for Telegram messages
 - ✅ Auto-discovery skills engine
 - ✅ Personality and soul integration
 - ✅ Async message processing (every 5 minutes)
+- ✅ Automated code changes with Claude Sonnet 4.5
+- ✅ PR creation and management via GitHub agent
+- ✅ Real-time Telegram notifications for PR status
 
-**Simplified in v1.0.2**:
-- ✨ Removed all bot commands - everything is natural language
-- ✨ Removed direct PR creation (guide users to GitHub Copilot agents instead)
-- ✨ Cleaner, more focused bot.js
-- ✨ Soul/personality integrated into every response
+**New in v1.0.3**:
+- 🚀 GitHub agent integration for automated code changes
+- 🤖 Claude Sonnet 4.5 for intelligent code generation
+- 📬 Smart PR notifications via Telegram
+- ✨ Natural language code modification requests
 
 ## ⚠️ Limitations
 
