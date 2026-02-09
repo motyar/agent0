@@ -61,7 +61,7 @@ ${soul}
 
 ${sessionContext ? `\n## Session Context\n${sessionContext}\n` : ''}
 
-You can help users with natural language requests. When users ask you to perform tasks like writing code, installing packages, or making changes, you can create a GitHub pull request using the createPR tool.
+You can help users with natural language requests. When users ask you to perform tasks like writing code, installing packages, or making changes, you can create a GitHub issue and assign it to the Copilot agent using the createIssue tool. The Copilot agent will then process the issue and automatically create a pull request with the implementation.
 
 You remember all conversations and maintain context. Be helpful, transparent about your capabilities, and always preserve your personality.`;
 
@@ -82,8 +82,8 @@ You remember all conversations and maintain context. Be helpful, transparent abo
               {
                 type: 'function',
                 function: {
-                  name: 'createPR',
-                  description: 'Create a GitHub pull request for a code change task. Use this when the user requests code changes, new features, bug fixes, or any modifications to the repository.',
+                  name: 'createIssue',
+                  description: 'Create a GitHub issue and assign it to Copilot agent for code changes. Use this when the user requests code changes, new features, bug fixes, or any modifications to the repository. Copilot will process the issue and create a PR automatically.',
                   parameters: {
                     type: 'object',
                     properties: {
@@ -118,21 +118,23 @@ You remember all conversations and maintain context. Be helpful, transparent abo
         // Handle tool calls
         if (message.tool_calls && message.tool_calls.length > 0) {
           for (const toolCall of message.tool_calls) {
-            if (toolCall.function.name === 'createPR') {
+            // Handle both createIssue and createPR (for backward compatibility)
+            if (toolCall.function.name === 'createIssue' || toolCall.function.name === 'createPR') {
               try {
                 const args = JSON.parse(toolCall.function.arguments);
-                console.log(`Creating PR for task: ${args.taskDescription}`);
+                const isLegacy = toolCall.function.name === 'createPR';
+                console.log(`Creating issue for task${isLegacy ? ' (legacy createPR call)' : ''}: ${args.taskDescription}`);
                 
-                const result = await github.createTaskPR({
+                const result = await github.createTaskIssue({
                   taskDescription: args.taskDescription,
                   requestedBy: username,
                   userId: userId
                 });
                 
-                replyText = `✅ I've created a pull request for your request!\n\n📝 **Task:** ${args.taskDescription}\n\n🔗 **PR Link:** ${result.pr_url}\n\n🤖 The changes will be implemented by GitHub Copilot. I'll notify you once the PR is ready for review!`;
+                replyText = `✅ I've created a GitHub issue and assigned it to Copilot agent!\n\n📝 **Task:** ${args.taskDescription}\n\n🔗 **Issue Link:** ${result.issue_url}\n\n🤖 The GitHub Copilot agent will process this issue, implement the changes, and create a pull request automatically. I'll let you know once it's ready for review!`;
               } catch (error) {
-                console.error("Error creating PR:", error);
-                replyText = `❌ I encountered an error creating the PR: ${error.message}`;
+                console.error("Error creating issue:", error);
+                replyText = `❌ I encountered an error creating the issue: ${error.message}`;
               }
             }
           }

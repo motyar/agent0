@@ -177,69 +177,76 @@ GitHub requires at least one commit difference to create a pull request.
   }
 
   /**
-   * Create a pull request for a task requested by bot
-   * This creates a branch and PR suitable for Copilot agent execution
+   * Create an issue and assign it to Copilot for processing
+   * This is the correct way to trigger GitHub Copilot agent
    */
-  async createTaskPR({ taskDescription, requestedBy, userId }) {
-    // Generate branch name
-    const timestamp = Date.now();
-    const sanitizedTask = taskDescription
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .substring(0, 50)
-      .replace(/^-|-$/g, '');
-    
-    const branchName = `bot-task/${sanitizedTask}-${timestamp}`;
-
+  async createTaskIssue({ taskDescription, requestedBy, userId }) {
     try {
-      // Create branch
-      await this.createBranch(branchName);
+      // Create issue with detailed description for Copilot
+      const issueTitle = `Bot Task: ${taskDescription}`;
+      const issueBody = `## Task Request from Bot
 
-      // Create initial commit on the branch to ensure there's a difference from main
-      await this.createInitialCommit(branchName, taskDescription);
+**Requested by:** @${requestedBy}
 
-      // Create PR with detailed description for Copilot
-      const prTitle = `Bot Task: ${taskDescription}`;
-      const prBody = `## Task Request from Bot
-
-**Requested by:** @${requestedBy} (User ID: ${userId})
-**Task:** ${taskDescription}
-
-### Instructions for Copilot Agent
+### Task Description
 
 ${taskDescription}
 
+### Instructions
+
+Please implement the requested changes following the repository's conventions and best practices.
+
 ### Context
 
-This PR was automatically created by Agent0 based on a user request via Telegram bot.
-The task should be implemented following the repository's conventions and best practices.
+This issue was automatically created by Agent0 based on a user request via Telegram bot.
+The Copilot agent will process this task and create a pull request with the implementation.
 
 ---
 🤖 Created by Agent0 Bot
 `;
 
-      // Create PR
-      const pr = await this.createPullRequest({
-        title: prTitle,
-        body: prBody,
-        head: branchName,
-        base: 'main'
+      // Create the issue
+      const issue = await this.api(`/repos/${this.owner}/${this.repo}/issues`, 'POST', {
+        title: issueTitle,
+        body: issueBody,
+        labels: ['bot-task', 'copilot-agent']
       });
 
-      // Add labels
-      await this.addLabels(pr.number, ['bot-task', 'copilot']);
+      console.log(`Issue created: #${issue.number} - ${issue.html_url}`);
+
+      // Assign the issue to Copilot agent
+      // Note: The assignee should be 'copilot' or the configured Copilot username
+      try {
+        await this.api(`/repos/${this.owner}/${this.repo}/issues/${issue.number}`, 'PATCH', {
+          assignees: ['copilot']
+        });
+        console.log(`Issue #${issue.number} assigned to Copilot agent`);
+      } catch (assignError) {
+        console.warn(`Could not assign to Copilot: ${assignError.message}`);
+        console.log('The issue was created but not assigned. You may need to manually assign it to @copilot.');
+      }
 
       return {
         success: true,
-        pr_number: pr.number,
-        pr_url: pr.html_url,
-        branch: branchName
+        issue_number: issue.number,
+        issue_url: issue.html_url
       };
 
     } catch (error) {
-      console.error(`Failed to create task PR: ${error.message}`);
+      console.error(`Failed to create task issue: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * @deprecated Use createTaskIssue instead
+   * Create a pull request for a task requested by bot
+   * This creates a branch and PR suitable for Copilot agent execution
+   */
+  async createTaskPR({ taskDescription, requestedBy, userId }) {
+    // Redirect to the new method
+    console.warn('createTaskPR is deprecated. Use createTaskIssue instead.');
+    return await this.createTaskIssue({ taskDescription, requestedBy, userId });
   }
 
   /**

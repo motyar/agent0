@@ -12,7 +12,7 @@ Agent0 is an autonomous AI agent that runs entirely on GitHub Actions, communica
 - **📝 Self-Aware**: Reads its own `soul.md` and understands its purpose
 - **🚀 Serverless**: No servers to maintain, runs on GitHub Actions
 - **🎯 Natural Language**: No bot commands - just chat naturally
-- **🔧 PR Creation**: Can create pull requests via GitHub Copilot when you ask for code changes
+- **🔧 PR Creation**: Can create GitHub issues assigned to Copilot agent for automated code changes
 
 ## 🏗️ Architecture
 
@@ -90,7 +90,7 @@ The agent will:
 - Remember all your conversations
 - Maintain context across sessions
 - Use its personality defined in `soul.md`
-- Create pull requests when you ask for code changes
+- Create GitHub issues and assign them to Copilot agent for code changes
 
 ## 🤖 How It Works
 
@@ -100,7 +100,7 @@ The agent will:
    - Loads the user's conversation history and session context
    - Loads its soul/personality from `agents/primary/soul.md`
    - Processes the message with GPT-4o-mini
-   - Can create PRs via GitHub API if requested
+   - Can create GitHub issues assigned to Copilot agent if requested
    - Sends response back via Telegram
    - Saves conversation to Git
 
@@ -116,13 +116,14 @@ The agent will:
 ### Chat with Memory
 The agent remembers all your previous conversations and maintains context within sessions.
 
-### Natural Language PR Creation
-Ask the agent to make code changes, and it will create a pull request for GitHub Copilot to implement:
+### Natural Language Code Changes with Copilot Agent
+Ask the agent to make code changes, and it will create a GitHub issue assigned to the Copilot agent. The Copilot agent will then automatically implement the changes and create a pull request:
 
 ```
 You: "Can you add a new API endpoint for user authentication?"
-Agent: "✅ I've created a pull request for your request!
-        🔗 PR Link: https://github.com/..."
+Agent: "✅ I've created a GitHub issue and assigned it to Copilot agent!
+        🔗 Issue Link: https://github.com/...
+        🤖 The GitHub Copilot agent will process this issue and create a PR automatically."
 ```
 
 ### Soul & Personality
@@ -145,7 +146,7 @@ Edit `agents/primary/identity.json` to update metadata and statistics.
 This is a streamlined version of Agent0 that focuses on:
 - ✅ Chat with memory and personality
 - ✅ Processing messages with GPT-4o-mini
-- ✅ Creating PRs via GitHub Actions
+- ✅ Creating GitHub issues assigned to Copilot agent for code changes
 - ❌ No complex task queues
 - ❌ No sandbox execution
 - ❌ No web search
