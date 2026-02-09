@@ -129,6 +129,9 @@ You remember all conversations and maintain context. Be helpful, transparent abo
         };
 
         // 4. Create or reuse Copilot session
+        // Note: Sessions are reused for efficiency, but conversation history
+        // is managed by our memory-engine.js and loaded via sessionContext.
+        // Each message includes the full context from memory in the system prompt.
         let session = userSessions.get(userId);
         if (!session) {
           session = await copilotClient.createSession({
@@ -204,18 +207,10 @@ You remember all conversations and maintain context. Be helpful, transparent abo
 
 // Cleanup function
 async function cleanup() {
-  // Close all user sessions
-  for (const [userId, session] of userSessions.entries()) {
-    try {
-      console.log(`Closing session for user ${userId}...`);
-      // Sessions are cleaned up automatically by the client
-    } catch (error) {
-      console.error(`Error closing session for user ${userId}:`, error);
-    }
-  }
+  // Clear session cache (sessions are automatically cleaned up by client.stop())
   userSessions.clear();
   
-  // Stop the Copilot client
+  // Stop the Copilot client (this closes all active sessions)
   if (copilotReady) {
     try {
       console.log("Stopping Copilot SDK client...");
