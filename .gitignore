@@ -28,11 +28,6 @@ wheels/
 venv/
 ENV/
 
-# Node.js (legacy)
-node_modules/
-package-lock.json
-package.json
-
 # IDE
 .vscode/
 .idea/
@@ -49,7 +44,3 @@ Thumbs.db
 *.tmp
 /tmp/
 .tasks/
-
-# Old memory structure (from Node.js version)
-memory/embeddings/
-memory/conversations/
