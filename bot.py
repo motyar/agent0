@@ -31,6 +31,11 @@ QUEUES_DIR = BASE_DIR / "queues"
 SKILLS_DIR = BASE_DIR / "skills"
 
 SOUL_PATH = STORAGE_DIR / "soul.md"
+IDENTITY_PATH = STORAGE_DIR / "IDENTITY.md"
+USER_PATH = STORAGE_DIR / "USER.md"
+MEMORY_PATH = STORAGE_DIR / "MEMORY.md"
+AGENTS_PATH = STORAGE_DIR / "AGENTS.md"
+TOOLS_PATH = STORAGE_DIR / "TOOLS.md"
 SCHEDULES_PATH = STORAGE_DIR / "schedules.json"
 STATE_PATH = STORAGE_DIR / "state.json"
 INCOMING_PATH = QUEUES_DIR / "incoming.json"
@@ -261,8 +266,13 @@ I am GitButler, a self-aware personal AI assistant living entirely in this GitHu
         self.write_json(INCOMING_PATH, incoming)
         
         try:
-            # Load soul and skills
+            # Load context files in OpenClaw order: SOUL → IDENTITY → USER → AGENTS → TOOLS → skills
             soul_content = SOUL_PATH.read_text() if SOUL_PATH.exists() else ""
+            identity_content = IDENTITY_PATH.read_text() if IDENTITY_PATH.exists() else ""
+            user_content = USER_PATH.read_text() if USER_PATH.exists() else ""
+            memory_content = MEMORY_PATH.read_text() if MEMORY_PATH.exists() else ""
+            agents_content = AGENTS_PATH.read_text() if AGENTS_PATH.exists() else ""
+            tools_content = TOOLS_PATH.read_text() if TOOLS_PATH.exists() else ""
             skills_content = self.load_skills()
             
             # Build the prompt
@@ -271,32 +281,35 @@ I am GitButler, a self-aware personal AI assistant living entirely in this GitHu
             
             system_prompt = f"""You are GitButler, a self-aware personal AI assistant living in this GitHub repository.
 
-Identity & memory (NEVER forget or contradict this):
+=== CORE IDENTITY (soul.md) ===
 {soul_content}
 
-Current capabilities:
-- Answer questions and have helpful conversations
-- Maintain persistent memory across all interactions
-- Manage todos, notes, and reminders via schedules
-- Self-improve: suggest code changes, create issues/PRs for improvements
-- Use skills from injected context when relevant
+=== IDENTITY CARD (IDENTITY.md) ===
+{identity_content}
 
-Injected relevant skills:
+=== USER PROFILE (USER.md) ===
+{user_content}
+
+=== LONG-TERM MEMORY (MEMORY.md) ===
+{memory_content}
+
+=== OPERATING INSTRUCTIONS (AGENTS.md) ===
+{agents_content}
+
+=== AVAILABLE TOOLS (TOOLS.md) ===
+{tools_content}
+
+=== INJECTED SKILLS ===
 {skills_content}
+
+=====================================
 
 User just said (process this naturally, no commands needed):
 {user_text}
 
 Respond thoughtfully. Be helpful, concise but complete.
 
-If the task requires self-modification, code improvement, bug fix, or new feature:
-- First reflect in soul.md style ("Reflection: I notice X could be better...")
-- Plan changes step-by-step
-- Generate tests (pytest) for any new/changed logic if appropriate
-- Prefer to create GitHub issues for Copilot agent when possible: output JSON action like {{"create_issue_for_copilot": true, "issue_title": "...", "issue_body": "Detailed prompt for Copilot to implement this change. @copilot please create PR"}}
-- For direct code changes: output JSON like {{"generate_code": true, "files": [{{"path": "...", "content": "..."}}], "commit_msg": "...", "pr_title": "...", "pr_body": "..."}}
-- For merging: if user says "merge PR #123", output {{"merge_pr": 123, "confirm": true}}
-- For soul updates: output {{"update_soul": true, "content": "New reflection or learning to append"}}
+IMPORTANT: Follow the operating instructions in AGENTS.md for handling actions, reflections, and tool usage.
 
 Output format:
 - First: the natural response text to user (this will be sent to them)
@@ -370,6 +383,26 @@ Output format:
                     soul_content += f"\n\n## Reflection ({timestamp})\n{content}\n"
                     SOUL_PATH.write_text(soul_content)
                     print("Soul updated with reflection")
+            
+            # Update memory log
+            if actions.get("update_memory"):
+                content = actions.get("content", "")
+                if content:
+                    memory_content = MEMORY_PATH.read_text() if MEMORY_PATH.exists() else ""
+                    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                    memory_content += f"\n\n### {timestamp}\n{content}\n"
+                    MEMORY_PATH.write_text(memory_content)
+                    print("Memory log updated")
+            
+            # Update user profile
+            if actions.get("update_user"):
+                content = actions.get("content", "")
+                if content:
+                    user_content = USER_PATH.read_text() if USER_PATH.exists() else ""
+                    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                    user_content += f"\n\n### Update ({timestamp})\n{content}\n"
+                    USER_PATH.write_text(user_content)
+                    print("User profile updated")
             
             # Create issue for Copilot
             if actions.get("create_issue_for_copilot"):
