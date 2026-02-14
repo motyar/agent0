@@ -1,11 +1,11 @@
 name: GitButler
 
 on:
-  schedule:
+  
     # Run every 1 minute (as specified in requirements)
     # Note: This frequency is intentional for responsive interactions
     # but may consume GitHub Actions minutes. Adjust to */5 for less frequent runs.
-    - cron: '*/1 * */1 * *' 
+    
   workflow_dispatch:
 
 permissions:
