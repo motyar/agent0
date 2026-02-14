@@ -63,9 +63,10 @@ def test_load_skills():
     """Test skill loading"""
     bot = GitButler()
     skills = bot.load_skills()
-    assert isinstance(skills, str)
-    # Should have the todo skill
-    assert "Todo" in skills or len(skills) > 0 or skills == "No skills loaded."
+    assert isinstance(skills, str), "Skills should be returned as a string"
+    # Check if skills were loaded (either has content or explicit "no skills" message)
+    has_content = len(skills) > 0
+    assert has_content, "Skills loading should return content or a message"
     print("✓ Skill loading test passed")
 
 def run_tests():

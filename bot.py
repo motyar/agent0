@@ -161,7 +161,7 @@ I am GitButler, a self-aware personal AI assistant living entirely in this GitHu
             except Exception as e:
                 if attempt < max_retries - 1:
                     print(f"Git operation failed (attempt {attempt + 1}/{max_retries}): {e}")
-                    time.sleep(2 ** attempt)  # Exponential backoff
+                    time.sleep(min(2 ** attempt, 10))  # Exponential backoff with 10s cap
                 else:
                     self.log_error(f"Git operation failed after {max_retries} attempts: {e}")
                     return False
@@ -293,10 +293,10 @@ If the task requires self-modification, code improvement, bug fix, or new featur
 - First reflect in soul.md style ("Reflection: I notice X could be better...")
 - Plan changes step-by-step
 - Generate tests (pytest) for any new/changed logic if appropriate
-- Prefer to create GitHub issues for Copilot agent when possible: output JSON action {{"create_issue_for_copilot": true, "issue_title": "...", "issue_body": "Detailed prompt for Copilot to implement this change. @copilot please create PR"}}
-- For direct code changes: output JSON {{"generate_code": true, "files": [{{"path": "...", "content": "..."}}], "commit_msg": "...", "pr_title": "...", "pr_body": "..."}}
-- For merging: if user says "merge PR #123", output {{"merge_pr": 123, "confirm": true}}
-- For soul updates: output {{"update_soul": true, "content": "New reflection or learning to append"}}
+- Prefer to create GitHub issues for Copilot agent when possible: output JSON action like {"create_issue_for_copilot": true, "issue_title": "...", "issue_body": "Detailed prompt for Copilot to implement this change. @copilot please create PR"}
+- For direct code changes: output JSON like {"generate_code": true, "files": [{"path": "...", "content": "..."}], "commit_msg": "...", "pr_title": "...", "pr_body": "..."}
+- For merging: if user says "merge PR #123", output {"merge_pr": 123, "confirm": true}
+- For soul updates: output {"update_soul": true, "content": "New reflection or learning to append"}
 
 Output format:
 - First: the natural response text to user (this will be sent to them)
