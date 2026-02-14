@@ -558,7 +558,9 @@ Output format:
             outgoing = self.read_json(OUTGOING_PATH, [])
             if outgoing:
                 print(f"   Found {len(outgoing)} message(s) to send")
-                self.send_outgoing_messages()
+                # Send all outgoing messages in the queue
+                while self.read_json(OUTGOING_PATH, []):
+                    self.send_outgoing_messages()
             else:
                 print("   No outgoing messages")
             
