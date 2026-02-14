@@ -266,7 +266,7 @@ I am GitButler, a self-aware personal AI assistant living entirely in this GitHu
         self.write_json(INCOMING_PATH, incoming)
         
         try:
-            # Load context files in OpenClaw order: SOUL → IDENTITY → USER → AGENTS → TOOLS → skills
+            # Load context files in OpenClaw order: SOUL → IDENTITY → USER → MEMORY → AGENTS → TOOLS → skills
             soul_content = SOUL_PATH.read_text() if SOUL_PATH.exists() else ""
             identity_content = IDENTITY_PATH.read_text() if IDENTITY_PATH.exists() else ""
             user_content = USER_PATH.read_text() if USER_PATH.exists() else ""
