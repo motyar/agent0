@@ -447,6 +447,7 @@ Output format:
             
             print(f"Sent message to Telegram")
             self.git_commit_push("Sent outgoing message")
+            return
             
         except Exception as e:
             self.log_error(f"Error sending Telegram message: {e}")
