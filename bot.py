@@ -559,8 +559,16 @@ Output format:
             if outgoing:
                 print(f"   Found {len(outgoing)} message(s) to send")
                 # Send all outgoing messages in the queue
-                while self.read_json(OUTGOING_PATH, []):
+                max_attempts = 100  # Safety limit to prevent infinite loops
+                attempts = 0
+                while self.read_json(OUTGOING_PATH, []) and attempts < max_attempts:
                     self.send_outgoing_messages()
+                    attempts += 1
+                
+                # Check if we hit the safety limit
+                remaining = self.read_json(OUTGOING_PATH, [])
+                if remaining:
+                    print(f"   Warning: {len(remaining)} messages remain after {attempts} attempts")
             else:
                 print("   No outgoing messages")
             
