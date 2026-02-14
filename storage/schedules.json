@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "cron": "0 8 * * *",
+    "description": "Daily morning brief",
+    "prompt": "Good morning! Provide a brief summary of any pending tasks or reminders for today.",
+    "last_run": null
+  }
+]

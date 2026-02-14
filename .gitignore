@@ -1,32 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv
+venv/
+ENV/
+
+# Node.js (legacy)
 node_modules/
-*.log
-.DS_Store
-.env
+package-lock.json
+package.json
+
+# IDE
 .vscode/
 .idea/
-
-# Temporary files
-/tmp/
-*.tmp
 *.swp
 *.swo
 *~
 
-# Task metadata files (created on PR branches)
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp
+/tmp/
 .tasks/
 
-# Temporary manual test scripts (not for CI/CD)
-test-pr-creation.js
-
-# Docker files (when implemented)
-*.dockerfile
-docker-compose.yml
-
-# Managed skills can be version controlled or not
-# Uncomment to ignore:
-# skills/managed/
-
-# Memory: Keep sessions but exclude large embeddings
+# Old memory structure (from Node.js version)
 memory/embeddings/
 memory/conversations/
-# Keep memory/sessions/ for session tracking

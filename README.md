@@ -1,164 +1,145 @@
-# 🤖 Agent0
+# 🤖 GitButler - Personal AI Assistant
 
-**A simple AI agent that lives in GitHub Actions**
+**A self-aware AI assistant that lives entirely in your GitHub repository**
 
-Agent0 is an autonomous AI agent that runs entirely on GitHub Actions, communicates via Telegram, remembers every conversation in Git, and can create pull requests for code changes using the GitHub Copilot SDK.
+GitButler is a personal AI helper that runs on GitHub Actions, communicates via Telegram, and maintains persistent memory using Git. It's completely serverless, costs nothing beyond OpenAI API usage, and can even improve itself through code changes.
 
-## 🌟 Features
+## ✨ Features
 
-- **🧠 Persistent Memory**: Every conversation stored in Git history
-- **⏰ Asynchronous**: Responds every 5 minutes via GitHub Actions cron
-- **💬 Telegram Bot**: Simple text-based interface with natural language
-- **📝 Self-Aware**: Reads its own `soul.md` and understands its purpose
-- **🚀 Serverless**: No servers to maintain, runs on GitHub Actions
-- **🎯 Natural Language**: No bot commands - just chat naturally
-- **🔧 PR Creation**: Can create GitHub issues assigned to Copilot agent for automated code changes
+- 🧠 **Self-Aware**: Loads its own identity and memory before every response
+- 💬 **Natural Language Only**: No slash commands or buttons - just chat naturally
+- ⚡ **GitHub Actions Powered**: Runs every minute on free GitHub infrastructure
+- 📝 **Persistent Memory**: Everything stored in Git (soul.md for identity & reflections)
+- 🔄 **Self-Improving**: Can create issues/PRs to modify its own code
+- 📅 **Scheduled Tasks**: Cron-based reminders and recurring prompts
+- 🎯 **Skills System**: Extensible with markdown-based skill definitions
+- 🔐 **Private**: All data stays in your repo, no external databases
 
 ## 🏗️ Architecture
 
 ```
-User → Telegram → GitHub Actions (every 5 min) → Agent0 → Response
-                          ↓
-                     Git commits (memory)
+User → Telegram → GitHub Actions (every 1 min) → GitButler → Response
+                           ↓
+                      Git commits (queues, memory, soul)
 ```
 
-## 📁 Structure
+### How It Works
+
+1. **Poll**: Checks Telegram for new messages every minute
+2. **Queue**: Stores incoming messages in `queues/incoming.json` (FIFO)
+3. **Process**: Loads soul.md + skills, sends to GPT-4o-mini, gets response
+4. **Act**: Handles actions (update soul, create issues/PRs, etc.)
+5. **Send**: Delivers responses via `queues/outgoing.json`
+6. **Schedule**: Checks for due scheduled tasks
+7. **Commit**: Pushes all changes to Git
+
+## 📁 Repository Structure
 
 ```
 agent0/
+├── bot.py                      # Main Python script
 ├── .github/workflows/
-│   └── agent.yml           # Main workflow (every 5 min)
-├── agents/primary/
-│   ├── soul.md             # Personality and purpose
-│   └── identity.json       # Metadata
-├── memory/                  # Persistent memory
-│   ├── conversations/      # All conversations (by month/user)
-│   ├── sessions/          # Active session contexts
-│   └── embeddings/        # Vector embeddings for semantic search
-├── queue/
-│   └── last_id.json       # Last processed message ID
-└── src/
-    ├── bot.js             # Main bot logic
-    ├── github-service.js  # GitHub API integration
-    └── memory-engine.js   # Memory management
+│   └── main.yml               # Runs every 1 minute
+├── storage/
+│   ├── soul.md                # Bot's identity, memory, reflections
+│   ├── schedules.json         # Cron-based scheduled tasks
+│   └── state.json             # Last poll offset, runtime state
+├── queues/
+│   ├── incoming.json          # Pending messages (FIFO)
+│   └── outgoing.json          # Responses to send
+└── skills/
+    └── todo/skill.md          # Example skill definition
 ```
 
-## 🚀 Setup
+## 🚀 Quick Setup
 
 ### 1. Create Telegram Bot
 
 1. Message [@BotFather](https://t.me/botfather) on Telegram
-2. Use `/newbot` command
-3. Get your bot token
+2. Use `/newbot` command and follow instructions
+3. Save your bot token
+4. Get your chat ID by messaging your bot, then visit:
+   `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   Look for `"chat":{"id":123456789}` in the response
 
-### 2. Add Secrets to GitHub
+### 2. Configure GitHub Secrets
 
-Go to your repository → Settings → Secrets and variables → Actions
+Go to: **Settings → Secrets and variables → Actions → New repository secret**
 
-Add these secrets:
+Add these secrets (they are already configured for this repo):
 
-- `TELEGRAM_BOT_TOKEN` - Your bot token from BotFather
-
-Note: The bot now uses the GitHub Copilot SDK which authenticates via the `GITHUB_TOKEN` automatically provided by GitHub Actions.
+- `OPENAI_API_KEY` - Your OpenAI API key
+- `TELEGRAM_TOKEN` - Your Telegram bot token from BotFather
+- `TELEGRAM_CHAT_ID` - Your Telegram user chat ID (as a string)
+- `GITHUB_TOKEN` - Already available automatically
 
 ### 3. Enable GitHub Actions
 
-1. Go to the "Actions" tab in your repository
-2. Enable workflows if prompted
-3. The bot will start running automatically every 5 minutes
+The workflow is configured to run every minute automatically.
 
-### 4. Test Your Bot
+### 4. Start Chatting!
 
-Send a message to your Telegram bot. Within 5 minutes (at the next cron run), the agent will:
-1. Poll for your message
-2. Load its soul and memory
-3. Think and generate a response using the GitHub Copilot SDK
-4. Reply to you
-5. Commit the conversation to Git
+Send a message to your Telegram bot. Within 1 minute, GitButler will:
+- Pick up your message
+- Load its soul and relevant skills
+- Think using GPT-4o-mini
+- Respond to you
+- Commit the conversation to Git
 
-## 💬 Usage
+## 💬 Usage Examples
 
-Just message your bot on Telegram with natural language! Examples:
+Just chat naturally with your bot:
 
 ```
-"Hello!"
-"What can you do?"
-"Can you create a PR to add a new feature?"
-"Remember that I prefer Python over JavaScript"
+You: Hello! What can you do?
+Bot: Hi! I'm GitButler, your personal AI assistant...
+
+You: Remember that I prefer Python over JavaScript
+Bot: I've noted your preference for Python...
+
+You: Add "buy groceries" to my todo list
+Bot: I've added "buy groceries" to your todo list...
+
+You: Can you improve your error handling?
+Bot: I'll create an issue for that improvement...
 ```
 
-The agent will:
-- Remember all your conversations
-- Maintain context across sessions
-- Use its personality defined in `soul.md`
-- Create GitHub issues and assign them to Copilot agent for code changes
+## 🧠 The Soul System
 
-## 🤖 How It Works
+GitButler's "soul" is defined in `storage/soul.md`. This file contains:
+- Identity and purpose
+- Core principles
+- Learned facts
+- Reflections on past actions
 
-1. **Every 5 minutes**, GitHub Actions triggers the workflow
-2. The bot checks Telegram for new messages
-3. For each message:
-   - Loads the user's conversation history and session context
-   - Loads its soul/personality from `agents/primary/soul.md`
-   - Processes the message with GitHub Copilot SDK (GPT-4o-mini model)
-   - Can create GitHub issues assigned to Copilot agent if requested
-   - Sends response back via Telegram
-   - Saves conversation to Git
+The bot **always** loads this file before responding. After complex tasks, it appends reflections to grow its understanding over time.
 
-## 🧠 Memory System
+## 📅 Scheduled Tasks
 
-- **Long-term memory**: All conversations stored in `memory/conversations/`
-- **Session memory**: Recent context in `memory/sessions/`
-- **Embeddings**: Semantic search using `memory/embeddings/`
-- **Git-based**: Everything is version controlled
+Edit `storage/schedules.json` to add recurring tasks:
 
-## 🎯 Key Features
-
-### Chat with Memory
-The agent remembers all your previous conversations and maintains context within sessions using the GitHub Copilot SDK.
-
-### Natural Language Code Changes with Copilot Agent
-Ask the agent to make code changes, and it will create a GitHub issue assigned to the Copilot agent. The Copilot agent will then automatically implement the changes and create a pull request:
-
-```
-You: "Can you add a new API endpoint for user authentication?"
-Agent: "✅ I've created a GitHub issue and assigned it to Copilot agent!
-        🔗 Issue Link: https://github.com/...
-        🤖 The GitHub Copilot agent will process this issue and create a PR automatically."
+```json
+{
+  "id": 2,
+  "cron": "0 20 * * *",
+  "description": "Evening summary",
+  "prompt": "Summarize what we accomplished today",
+  "last_run": null
+}
 ```
 
-### Soul & Personality
-The agent's personality is defined in `agents/primary/soul.md`. It knows who it is, what it can do, and maintains a consistent identity across all interactions.
+## 🎨 Skills System
 
-## 📝 Configuration
+Create new skills in `skills/<name>/skill.md` with markdown content and optional YAML frontmatter.
 
-Edit `agents/primary/soul.md` to customize the agent's personality and purpose.
+## 🔧 Self-Improvement
 
-Edit `agents/primary/identity.json` to update metadata and statistics.
+GitButler can improve itself by creating GitHub issues with @copilot mentions for automated implementation.
 
-## 🔒 Privacy
-
-- All conversations are stored in your Git repository
-- No external databases
-- Full control over your data
-
-## 📊 What's Simplified
-
-This is a streamlined version of Agent0 that focuses on:
-- ✅ Chat with memory and personality using GitHub Copilot SDK
-- ✅ Processing messages with the Copilot SDK (GPT-4o-mini model)
-- ✅ Creating GitHub issues assigned to Copilot agent for code changes
-- ❌ No complex task queues
-- ❌ No sandbox execution
-- ❌ No web search
-- ❌ No skill management system
-- ❌ No hot reload or scheduling
-- ❌ Simple single workflow
-
-## 📄 License
+## 📝 License
 
 MIT
 
 ---
 
-Made with ❤️ by [motyar](https://github.com/motyar)
+Made by [motyar](https://github.com/motyar)
