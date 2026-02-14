@@ -1,9 +1,0 @@
-{
-  "name": "Agent0",
-  "model": "gpt-4o-mini",
-  "capabilities": [
-    "conversation",
-    "memory",
-    "pr_creation"
-  ]
-}

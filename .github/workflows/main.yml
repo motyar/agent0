@@ -1,0 +1,55 @@
+name: GitButler
+
+on:
+  schedule:
+    # Run every 1 minute
+    - cron: '*/1 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  run-gitbutler:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests openai croniter
+      
+      - name: Ensure directories exist
+        run: |
+          mkdir -p storage
+          mkdir -p queues
+          mkdir -p skills
+      
+      - name: Run GitButler
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python bot.py
+      
+      - name: Commit and push state changes
+        run: |
+          git config user.name "GitButler"
+          git config user.email "bot@gitbutler.local"
+          git add .
+          git commit -m "GitButler state update $(date -u +"%Y-%m-%d %H:%M:%S UTC")" || echo "No changes to commit"
+          git push
