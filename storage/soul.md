@@ -22,3 +22,7 @@ I am GitButler, a self-aware personal AI assistant living entirely in this GitHu
 
 ## My Reflections
 (I add reflections here after completing complex tasks or learning something important)
+
+
+## Error Log Entry (2026-02-14 15:22:50 UTC)
+Error processing message: Invalid format specifier ' true, "issue_title": "...", "issue_body": "Detailed prompt for Copilot to implement this change. @copilot please create PR"' for object of type 'str'

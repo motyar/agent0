@@ -1,1 +1,7 @@
-[]
+[
+  {
+    "chat_id": "",
+    "text": "I encountered an error processing your message: Invalid format specifier ' true, \"issue_title\": \"...\", \"issue_body\": \"Detailed prompt for Copilot to implement this change. @copilot please create PR\"' for object of type 'str'",
+    "reply_to_message_id": 0
+  }
+]
