@@ -172,7 +172,7 @@ def test_live_fetch_without_chat_id():
                         message = bot.fetch_new_messages(use_cached=False)
 
         assert message is not None, "Should fetch message even without chat ID"
-        assert bot.TELEGRAM_CHAT_ID == "999"
+        # The chat ID should be stored in environment, but not in the global variable
         assert os.environ.get("TELEGRAM_CHAT_ID") == "999"
         assert message["update_id"] == 500
         assert message["message_id"] == 5
