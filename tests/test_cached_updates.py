@@ -19,10 +19,9 @@ DEFAULT_TEST_CHAT_ID = 123456789
 def test_fetch_with_cache():
     """Test that fetch_new_messages can use cached data"""
     
-    # Create a mock cached response
-    cache_dir = Path("/tmp/gitbutler")
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / "telegram_updates.json"
+    # Create a mock cached response using the constant from bot.py
+    cache_file = bot.TELEGRAM_UPDATES_CACHE
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
     
     # Use a valid chat_id from environment or default
     chat_id_str = os.environ.get("TELEGRAM_CHAT_ID", str(DEFAULT_TEST_CHAT_ID))
@@ -75,7 +74,7 @@ def test_fetch_without_cache_fallback():
     """Test that fetch_new_messages falls back to API when cache doesn't exist"""
     
     # Ensure cache doesn't exist
-    cache_file = Path("/tmp/gitbutler/telegram_updates.json")
+    cache_file = bot.TELEGRAM_UPDATES_CACHE
     if cache_file.exists():
         cache_file.unlink()
     
