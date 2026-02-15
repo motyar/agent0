@@ -23,22 +23,34 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       
+      - name: Check for updates (before installing dependencies)
+        id: check_updates
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        run: |
+          bash check_updates.sh
+        continue-on-error: true
+      
       - name: Setup Python
+        if: steps.check_updates.outcome == 'success'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       
       - name: Install dependencies
+        if: steps.check_updates.outcome == 'success'
         run: |
           python -m pip install --upgrade pip
           pip install requests openai
       
       - name: Ensure directories exist
+        if: steps.check_updates.outcome == 'success'
         run: |
           mkdir -p storage
           mkdir -p skills
       
       - name: Run GitButler
+        if: steps.check_updates.outcome == 'success'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -48,6 +60,7 @@ jobs:
         run: python bot.py
       
       - name: Commit and push state changes
+        if: steps.check_updates.outcome == 'success'
         run: |
           git config user.name "GitButler"
           git config user.email "bot@gitbutler.local"
