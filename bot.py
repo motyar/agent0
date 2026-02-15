@@ -191,13 +191,13 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
             log_error(f"Telegram API error: {data}")
             return None
         
-        if used_cache:
-            print("Successfully used cached Telegram response from check_updates.sh")
-        
         updates = data.get("result", [])
         if not updates:
             print("No new messages found")
             return None
+        
+        if used_cache:
+            print("Successfully used cached Telegram response from check_updates.sh")
         
         # Process only the first update
         update = updates[0]
