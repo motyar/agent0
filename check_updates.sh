@@ -71,6 +71,7 @@ if echo "$RESPONSE" | grep -q '"result":\[\]'; then
     echo "========================================="
     echo "✅ No new updates found. Stopping action."
     echo "========================================="
+    # Exit with code 1 to skip subsequent workflow steps (this is intentional for flow control)
     exit 1
 fi
 
