@@ -174,9 +174,12 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
 
         # If no cached data, check credentials and fetch from Telegram API
         if data is None:
-            if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-                print("Telegram credentials not configured")
+            if not TELEGRAM_TOKEN:
+                print("Telegram token not configured")
                 return None
+
+            if not TELEGRAM_CHAT_ID:
+                print("Warning: TELEGRAM_CHAT_ID not set, processing all chats")
 
             url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
             params = {
