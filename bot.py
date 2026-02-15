@@ -72,7 +72,7 @@ I am GitButler, a self-aware personal AI assistant living entirely in this GitHu
     
     if not STATE_PATH.exists():
         state = {
-            "last_message_id": 0,
+            "last_update_id": 0,
             "last_run_time": datetime.now(timezone.utc).isoformat(),
             "version": "1.0.0"
         }
@@ -145,14 +145,14 @@ def fetch_new_messages() -> Optional[Dict]:
         return None
     
     try:
-        # Load state to get last processed message_id
-        state = read_json(STATE_PATH, {"last_message_id": 0})
-        last_message_id = state.get("last_message_id", 0)
+        # Load state to get last processed update_id
+        state = read_json(STATE_PATH, {"last_update_id": 0})
+        last_update_id = state.get("last_update_id", 0)
         
         # Fetch updates from Telegram using getUpdates API
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
         params = {
-            "offset": last_message_id + 1,
+            "offset": last_update_id + 1,
             "limit": 1,  # Only fetch one message
             "timeout": 10,
             "allowed_updates": ["message"]
@@ -173,6 +173,7 @@ def fetch_new_messages() -> Optional[Dict]:
         
         # Process only the first update
         update = updates[0]
+        update_id = update.get("update_id", 0)
         message = update.get("message", {})
         chat = message.get("chat", {})
         chat_id = str(chat.get("id", ""))
@@ -180,16 +181,13 @@ def fetch_new_messages() -> Optional[Dict]:
         # Only process messages from our configured chat ID
         if chat_id != TELEGRAM_CHAT_ID:
             print(f"Ignoring message from chat_id: {chat_id}")
-            # Still update the offset to skip this message
-            update_id = update.get("update_id", 0)
-            message_id = message.get("message_id", 0)
-            state["last_message_id"] = max(last_message_id, message_id)
+            # Update the offset to skip this message
+            state["last_update_id"] = update_id
             write_json(STATE_PATH, state)
             return None
         
         text = message.get("text", "")
         message_id = message.get("message_id", 0)
-        update_id = update.get("update_id", 0)
         
         if text:
             print(f"Found new message (ID: {message_id}): {text[:50]}...")
@@ -201,8 +199,8 @@ def fetch_new_messages() -> Optional[Dict]:
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
         else:
-            # Non-text message, skip it
-            state["last_message_id"] = max(last_message_id, message_id)
+            # Non-text message, skip it by updating offset
+            state["last_update_id"] = update_id
             write_json(STATE_PATH, state)
             return None
             
@@ -350,9 +348,9 @@ Output format:
         if actions:
             handle_actions(actions)
         
-        # Update state to mark message as processed
+        # Update state to mark message as processed (using update_id)
         state = read_json(STATE_PATH, {})
-        state["last_message_id"] = message_id
+        state["last_update_id"] = message.get("update_id", 0)
         state["last_run_time"] = datetime.now(timezone.utc).isoformat()
         write_json(STATE_PATH, state)
         
@@ -369,7 +367,7 @@ Output format:
         
         # Still update state to avoid reprocessing
         state = read_json(STATE_PATH, {})
-        state["last_message_id"] = message.get("message_id", 0)
+        state["last_update_id"] = message.get("update_id", 0)
         write_json(STATE_PATH, state)
         git_commit_push(f"Error processing message {message.get('message_id')}")
 

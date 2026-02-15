@@ -28,18 +28,20 @@ def test_file_creation():
 
 def test_json_operations():
     """Test JSON read/write operations"""
+    from bot import read_json, write_json
+    
     # Test read
-    state = bot.read_json(Path("storage/state.json"))
+    state = read_json(Path("storage/state.json"))
     assert isinstance(state, dict)
-    assert "last_message_id" in state
+    assert "last_update_id" in state
     
     # Test write
     test_path = Path("storage/test.json")
     test_data = {"test": "data", "number": 123}
-    bot.write_json(test_path, test_data)
+    write_json(test_path, test_data)
     
     # Read back
-    result = bot.read_json(test_path)
+    result = read_json(test_path)
     assert result["test"] == "data"
     assert result["number"] == 123
     
@@ -49,7 +51,9 @@ def test_json_operations():
 
 def test_load_skills():
     """Test skill loading"""
-    skills = bot.load_skills()
+    from bot import load_skills
+    
+    skills = load_skills()
     assert isinstance(skills, str), "Skills should be returned as a string"
     # Check if skills were loaded (either has content or explicit "no skills" message)
     has_content = len(skills) > 0
