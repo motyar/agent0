@@ -2,15 +2,6 @@ name: GitButler Agent
 
 on:
   workflow_dispatch:
-    inputs:
-      mode:
-        description: 'Run mode (continuous for long-running, single for one message)'
-        required: false
-        default: 'continuous'
-        type: choice
-        options:
-          - continuous
-          - single
 
 permissions:
   contents: write
@@ -20,7 +11,7 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 60  # 1 hours
+    timeout-minutes: 10
     
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +33,5 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RUN_MODE: ${{ github.event.inputs.mode || 'continuous' }}
         run: |
           python bot.py
