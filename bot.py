@@ -35,9 +35,6 @@ AGENTS_PATH = STORAGE_DIR / "AGENTS.md"
 TOOLS_PATH = STORAGE_DIR / "TOOLS.md"
 STATE_PATH = STORAGE_DIR / "state.json"
 
-# Cache file for Telegram updates (shared between check_updates.sh and bot.py)
-TELEGRAM_UPDATES_CACHE = Path("/tmp/gitbutler/telegram_updates.json")
-
 
 def ensure_directories():
     """Create necessary directories if they don't exist"""
