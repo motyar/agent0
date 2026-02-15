@@ -15,12 +15,15 @@ if [ -z "$TELEGRAM_TOKEN" ]; then
     exit 1
 fi
 
-# Always send "Action running" notification to user ID 3181434
+# Set notification user ID (defaults to 3181434 if not provided)
+NOTIFICATION_USER_ID="${NOTIFICATION_USER_ID:-3181434}"
+
+# Always send "Action running" notification
 echo ""
-echo "Sending 'Action running' notification to user 3181434..."
-NOTIFICATION_RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+echo "Sending 'Action running' notification to user ${NOTIFICATION_USER_ID}..."
+NOTIFICATION_RESPONSE=$(curl -s -f -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
     -H "Content-Type: application/json" \
-    -d "{\"chat_id\":\"3181434\",\"text\":\"Action running\"}")
+    -d "{\"chat_id\":\"${NOTIFICATION_USER_ID}\",\"text\":\"Action running\"}")
 
 if echo "$NOTIFICATION_RESPONSE" | grep -q '"ok":true'; then
     echo "✓ Notification sent successfully"
@@ -50,22 +53,15 @@ echo "Checking for new updates from Telegram..."
 
 # Fetch updates from Telegram
 OFFSET=$((LAST_UPDATE_ID + 1))
-RESPONSE=$(curl -s "https://api.telegram.org/bot${TELEGRAM_TOKEN}/getUpdates?offset=${OFFSET}&limit=1&timeout=10&allowed_updates=%5B%22message%22%5D")
+if ! RESPONSE=$(curl -s -f "https://api.telegram.org/bot${TELEGRAM_TOKEN}/getUpdates?offset=${OFFSET}&limit=1&timeout=10&allowed_updates=%5B%22message%22%5D"); then
+    echo "ERROR: Failed to fetch updates from Telegram (network error)"
+    exit 1
+fi
 
 # Check if response is OK
 if ! echo "$RESPONSE" | grep -q '"ok":true'; then
     echo "ERROR: Telegram API returned error"
     echo "Response: $RESPONSE"
-    exit 1
-fi
-
-# Check if there are any updates
-UPDATE_COUNT=$(echo "$RESPONSE" | grep -o '"result":\[' | wc -l)
-if [ "$UPDATE_COUNT" -eq 0 ]; then
-    echo ""
-    echo "========================================="
-    echo "✅ No new updates found. Stopping action."
-    echo "========================================="
     exit 1
 fi
 
