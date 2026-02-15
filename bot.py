@@ -170,6 +170,7 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
     Args:
         use_cached: If True, try to use cached response from check_updates.sh instead of making API call
     """
+    global TELEGRAM_CHAT_ID
     try:
         # Load state to get last processed update_id
         state = read_json(STATE_PATH, {"last_update_id": 0})
@@ -195,7 +196,7 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
                 return None
 
             if not TELEGRAM_CHAT_ID:
-                print("Warning: TELEGRAM_CHAT_ID not set, processing all chats")
+                print("Warning: TELEGRAM_CHAT_ID not set, will use incoming chat ID")
 
             url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
             params = {
@@ -224,6 +225,10 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
         message = update.get("message", {})
         chat = message.get("chat", {})
         chat_id = str(chat.get("id", ""))
+
+        if not TELEGRAM_CHAT_ID and chat_id:
+            TELEGRAM_CHAT_ID = chat_id
+            os.environ["TELEGRAM_CHAT_ID"] = chat_id
 
         # Only validate chat ID if we're not using cached data
         # (cached data from check_updates.sh is already validated)

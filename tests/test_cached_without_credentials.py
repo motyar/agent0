@@ -163,15 +163,17 @@ def test_live_fetch_without_chat_id():
             }))
 
             with patch("bot.STATE_PATH", state_path):
-                with patch("requests.get") as mock_get:
-                    mock_get.return_value = Mock(
-                        json=lambda: mock_response,
-                        raise_for_status=lambda: None
-                    )
+                    with patch("requests.get") as mock_get:
+                        mock_get.return_value = Mock(
+                            json=lambda: mock_response,
+                            raise_for_status=lambda: None
+                        )
 
-                    message = bot.fetch_new_messages(use_cached=False)
+                        message = bot.fetch_new_messages(use_cached=False)
 
         assert message is not None, "Should fetch message even without chat ID"
+        assert bot.TELEGRAM_CHAT_ID == "999"
+        assert os.environ.get("TELEGRAM_CHAT_ID") == "999"
         assert message["update_id"] == 500
         assert message["message_id"] == 5
         assert message["text"] == "Live message"
