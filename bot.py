@@ -35,6 +35,9 @@ AGENTS_PATH = STORAGE_DIR / "AGENTS.md"
 TOOLS_PATH = STORAGE_DIR / "TOOLS.md"
 STATE_PATH = STORAGE_DIR / "state.json"
 
+# Cache file for Telegram updates (shared between check_updates.sh and bot.py)
+TELEGRAM_UPDATES_CACHE = Path("/tmp/gitbutler/telegram_updates.json")
+
 
 def ensure_directories():
     """Create necessary directories if they don't exist"""
@@ -161,11 +164,10 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
         # Try to use cached response if available and requested
         data = None
         if use_cached:
-            cache_file = Path("/tmp/gitbutler/telegram_updates.json")
-            if cache_file.exists():
+            if TELEGRAM_UPDATES_CACHE.exists():
                 print("Using cached Telegram response from check_updates.sh")
                 try:
-                    data = json.loads(cache_file.read_text())
+                    data = json.loads(TELEGRAM_UPDATES_CACHE.read_text())
                 except Exception as e:
                     print(f"Failed to read cache, will fetch from API: {e}")
                     data = None

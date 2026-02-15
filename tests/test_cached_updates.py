@@ -12,6 +12,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import bot
 
+# Test constants
+DEFAULT_TEST_CHAT_ID = 123456789
+
+
 def test_fetch_with_cache():
     """Test that fetch_new_messages can use cached data"""
     
@@ -20,13 +24,12 @@ def test_fetch_with_cache():
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_dir / "telegram_updates.json"
     
-    # Create mock telegram response
     # Use a valid chat_id from environment or default
-    chat_id_str = os.environ.get("TELEGRAM_CHAT_ID", "123456789")
+    chat_id_str = os.environ.get("TELEGRAM_CHAT_ID", str(DEFAULT_TEST_CHAT_ID))
     try:
         chat_id = int(chat_id_str)
     except ValueError:
-        chat_id = 123456789  # Fallback to default if not numeric
+        chat_id = DEFAULT_TEST_CHAT_ID  # Fallback to default if not numeric
     
     mock_response = {
         "ok": True,
