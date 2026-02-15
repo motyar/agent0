@@ -14,6 +14,82 @@ GitButler is a personal AI helper that runs on GitHub Actions, communicates via 
 - 📅 **Scheduled Tasks**: Cron-based reminders and recurring prompts
 - 🎯 **Skills System**: Extensible with markdown-based skill definitions
 - 🔐 **Private**: All data stays in your repo, no external databases
+- 🔄 **Continuous Mode**: Long-running mode with ~10 second response time
+
+## 🚀 Continuous Mode (NEW!)
+
+GitButler now supports **continuous mode** - a long-running operation mode that keeps the bot active and responsive with near-real-time responses (~10 second polling).
+
+### How It Works
+
+Instead of processing one message and exiting, continuous mode runs in a loop:
+
+1. **Active Mode** (🟢): Polls Telegram every 10 seconds for new messages
+2. **Idle Mode** (🟡): Polls every 30 seconds (low-power mode)
+3. **Stopped Mode** (💤): Bot is sleeping, waiting for wake command
+
+### User Control Commands
+
+You can control the bot with special commands:
+
+**Start the bot:**
+- `start`
+- `wake up`
+- `wake`
+
+**Stop the bot:**
+- `stop`
+- `sleep`
+- `pause`
+
+**Check status:**
+- `status`
+
+### Auto-Sleep Feature
+
+The bot automatically goes to idle mode after **30 minutes of inactivity** to conserve GitHub Actions minutes. This prevents the bot from running indefinitely when not in use.
+
+### Running Modes
+
+GitButler supports two modes via the `RUN_MODE` environment variable:
+
+- **`continuous`** (default): Long-running mode with ~10 second responses
+- **`single`**: Process one message and exit (legacy mode)
+
+### GitHub Actions Configuration
+
+The workflow is configured with:
+- **6-hour timeout**: Maximum GitHub Actions allows
+- **5-minute schedule fallback**: Checks for messages if bot is stopped
+- **Manual trigger**: You can start continuous mode manually via workflow_dispatch
+
+### Usage Example
+
+```
+You: start
+Bot: 👋 I'm awake and active! Ready to help.
+
+You: What can you do?
+Bot: [Responds in ~10 seconds]
+
+You: status
+Bot: 📊 Bot Status
+     Mode: ACTIVE 🟢
+     Uptime: 0:15:23
+     Messages processed: 5
+     Idle cycles: 0/180
+
+You: stop
+Bot: 💤 Going to sleep. Send 'start' or 'wake up' to reactivate me.
+```
+
+### Benefits
+
+- **Near real-time**: ~10 second response time when active
+- **Cost efficient**: Auto-sleeps when idle to save Actions minutes
+- **Always available**: Can stay active for up to 6 hours
+- **User controlled**: Start/stop anytime with simple commands
+- **Conversational**: Natural back-and-forth chat experience
 
 ## 🏗️ Architecture
 
@@ -25,6 +101,14 @@ User → Telegram → GitHub Actions (workflow dispatch) → GitButler → Respo
 
 ### How It Works
 
+**Continuous Mode (Default):**
+1. **Start**: Bot enters continuous loop checking for messages every 10 seconds
+2. **Process**: When message arrives, loads context and sends to GPT-4o-mini
+3. **Respond**: Sends response directly to Telegram
+4. **Auto-sleep**: After 30 minutes of inactivity, switches to idle mode
+5. **State**: Maintains active/idle/stopped state in storage/state.json
+
+**Single Message Mode (Legacy):**
 1. **Early Check**: Before installing any dependencies, checks Telegram API for new messages (lightweight)
 2. **Exit Fast**: If no new messages, exits immediately without installing dependencies
 3. **Fetch**: If updates exist, installs dependencies and fetches message details
@@ -35,11 +119,13 @@ User → Telegram → GitHub Actions (workflow dispatch) → GitButler → Respo
 8. **Commit**: Pushes all changes to Git
 
 **Key Design Principles**:
-- ✅ Check for updates before installing dependencies (optimization)
+- ✅ **Continuous mode by default** for near real-time responses (~10 seconds)
+- ✅ **Auto-sleep after 30 min idle** to conserve GitHub Actions minutes
+- ✅ **User control commands** (start/stop/status) for manual control
+- ✅ **State machine** (active/idle/stopped) persisted in Git
+- ✅ Single message mode still available (RUN_MODE=single)
 - ✅ No message queues - direct API calls only
-- ✅ Process one message per run
 - ✅ Track last processed update_id for Telegram offset
-- ✅ Stop immediately if no new messages
 - ✅ Simple function-based architecture (no classes)
 
 ## 📁 Repository Structure
@@ -88,19 +174,48 @@ Add these secrets (they are already configured for this repo):
 
 ### 3. Enable GitHub Actions
 
-The workflow is configured to run on `workflow_dispatch` (manual trigger).
-You can trigger it manually or set up a schedule by adding a cron trigger to the workflow file.
+Go to **Actions** tab in your repository and enable workflows if they're not already enabled.
 
-### 4. Start Chatting!
+### 4. Start the Bot
 
-Send a message to your Telegram bot. Then trigger the workflow to:
+**Option A: Continuous Mode (Recommended)**
+1. Go to **Actions** → **GitButler Agent** workflow
+2. Click **Run workflow** → Select `continuous` mode
+3. The bot will run for up to 6 hours or until stopped
+4. Send a message to your bot - it will respond in ~10 seconds
+
+**Option B: Single Message Mode**
+1. Go to **Actions** → **GitButler Agent** workflow
+2. Click **Run workflow** → Select `single` mode
+3. Bot processes one message and exits
+
+**Option C: Schedule (Automatic)**
+The workflow runs every 5 minutes by default to check for new messages when the bot is stopped.
+
+### 5. Start Chatting!
+
+**Continuous mode:**
+```
+You: start
+Bot: 👋 I'm awake and active! Ready to help.
+
+You: What's the weather?
+Bot: [Responds in ~10 seconds]
+
+You: status
+Bot: 📊 Bot Status - Mode: ACTIVE 🟢
+
+You: stop
+Bot: 💤 Going to sleep. Send 'start' or 'wake up' to reactivate me.
+```
+
+**Single message mode:**
+Send a message to your Telegram bot, then trigger the workflow to:
 - Fetch your message directly from Telegram
 - Load its soul and relevant skills
 - Think using GPT-4o-mini
 - Respond to you directly
 - Commit the conversation to Git
-
-**Note**: The bot processes ONE message per run and exits if no new messages are found.
 
 ## 💬 Usage Examples
 
