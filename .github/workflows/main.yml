@@ -30,7 +30,7 @@ jobs:
       - name: Check for updates (before installing dependencies)
         id: check_updates
         env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         run: |
           bash check_updates.sh
         continue-on-error: true
@@ -61,6 +61,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          SKIP_UPDATE_CHECK: "true"
         run: python bot.py
       
       - name: Commit and push state changes
