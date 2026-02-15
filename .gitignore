@@ -44,3 +44,6 @@ Thumbs.db
 *.tmp
 /tmp/
 .tasks/
+
+# Queues directory (deprecated)
+queues/
