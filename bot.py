@@ -35,6 +35,9 @@ AGENTS_PATH = STORAGE_DIR / "AGENTS.md"
 TOOLS_PATH = STORAGE_DIR / "TOOLS.md"
 STATE_PATH = STORAGE_DIR / "state.json"
 
+# Cache file for Telegram updates (shared between check_updates.sh and bot.py)
+TELEGRAM_UPDATES_CACHE = Path("/tmp/gitbutler/telegram_updates.json")
+
 
 def ensure_directories():
     """Create necessary directories if they don't exist"""
@@ -142,9 +145,13 @@ def git_commit_push(message: str):
         return False
 
 
-def fetch_new_messages() -> Optional[Dict]:
+def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
     """Fetch new messages directly from Telegram API
-    Returns the next unprocessed message or None if no new messages"""
+    Returns the next unprocessed message or None if no new messages
+    
+    Args:
+        use_cached: If True, try to use cached response from check_updates.sh instead of making API call
+    """
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         print("Telegram credentials not configured")
         return None
@@ -154,18 +161,31 @@ def fetch_new_messages() -> Optional[Dict]:
         state = read_json(STATE_PATH, {"last_update_id": 0})
         last_update_id = state.get("last_update_id", 0)
         
-        # Fetch updates from Telegram using getUpdates API
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
-        params = {
-            "offset": last_update_id + 1,
-            "limit": 1,  # Only fetch one message
-            "timeout": 10,
-            "allowed_updates": ["message"]
-        }
+        # Try to use cached response if available and requested
+        data = None
+        used_cache = False
+        if use_cached:
+            if TELEGRAM_UPDATES_CACHE.exists():
+                try:
+                    data = json.loads(TELEGRAM_UPDATES_CACHE.read_text())
+                    used_cache = True
+                except Exception as e:
+                    print(f"Failed to read cache, will fetch from API: {e}")
+                    data = None
         
-        response = requests.get(url, params=params, timeout=15)
-        response.raise_for_status()
-        data = response.json()
+        # If no cached data, fetch from Telegram API
+        if data is None:
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
+            params = {
+                "offset": last_update_id + 1,
+                "limit": 1,  # Only fetch one message
+                "timeout": 10,
+                "allowed_updates": ["message"]
+            }
+            
+            response = requests.get(url, params=params, timeout=15)
+            response.raise_for_status()
+            data = response.json()
         
         if not data.get("ok"):
             log_error(f"Telegram API error: {data}")
@@ -175,6 +195,9 @@ def fetch_new_messages() -> Optional[Dict]:
         if not updates:
             print("No new messages found")
             return None
+        
+        if used_cache:
+            print("Successfully used cached Telegram response from check_updates.sh")
         
         # Process only the first update
         update = updates[0]
@@ -473,12 +496,12 @@ def main():
         
         if skip_check:
             # Step 1: Skip checking for messages since check_updates.sh already confirmed updates exist
-            print("\n1. Update check already done by check_updates.sh, fetching next message...")
+            print("\n1. Update check already done by check_updates.sh, using cached response...")
         else:
             # Step 1: Check for new messages from Telegram
             print("\n1. Checking for new messages...")
         
-        message = fetch_new_messages()
+        message = fetch_new_messages(use_cached=skip_check)
         
         # Step 2: If no messages, stop
         if not message:
