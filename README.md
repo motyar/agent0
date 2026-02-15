@@ -30,13 +30,13 @@ User → Telegram → GitHub Actions (workflow dispatch) → GitButler → Respo
 3. **Process**: Loads soul.md + skills, sends to GPT-4o-mini, gets response
 4. **Send**: Sends response directly to Telegram (no queue)
 5. **Act**: Handles actions (update soul, create issues/PRs, etc.)
-6. **Track**: Updates last_message_id in state.json
+6. **Track**: Updates last_update_id in state.json
 7. **Commit**: Pushes all changes to Git
 
 **Key Design Principles**:
 - ✅ No message queues - direct API calls only
 - ✅ Process one message per run
-- ✅ Track last processed message_id
+- ✅ Track last processed update_id for Telegram offset
 - ✅ Stop immediately if no new messages
 - ✅ Simple function-based architecture (no classes)
 

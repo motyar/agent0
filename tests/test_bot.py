@@ -73,8 +73,8 @@ def test_context_files_readable():
     """Test that context files can be read"""
     from bot import SOUL_PATH
     
-    # Read soul file
-    soul_content = SOUL_PATH.read_text() if SOUL_PATH.exists() else ""
+    # Read soul file - should exist after test_file_creation
+    soul_content = SOUL_PATH.read_text()
     
     # Verify they have content
     assert len(soul_content) > 0, "soul.md should have content"

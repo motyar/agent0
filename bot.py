@@ -110,6 +110,11 @@ def log_error(message: str):
         pass
 
 
+def read_file_or_empty(path: Path) -> str:
+    """Read file content or return empty string if file doesn't exist"""
+    return path.read_text() if path.exists() else ""
+
+
 def git_commit_push(message: str):
     """Commit and push changes to git"""
     try:
@@ -263,12 +268,12 @@ def process_message(message: Dict):
     
     try:
         # Load context files in OpenClaw order: SOUL → IDENTITY → USER → MEMORY → AGENTS → TOOLS → skills
-        soul_content = SOUL_PATH.read_text() if SOUL_PATH.exists() else ""
-        identity_content = IDENTITY_PATH.read_text() if IDENTITY_PATH.exists() else ""
-        user_content = USER_PATH.read_text() if USER_PATH.exists() else ""
-        memory_content = MEMORY_PATH.read_text() if MEMORY_PATH.exists() else ""
-        agents_content = AGENTS_PATH.read_text() if AGENTS_PATH.exists() else ""
-        tools_content = TOOLS_PATH.read_text() if TOOLS_PATH.exists() else ""
+        soul_content = read_file_or_empty(SOUL_PATH)
+        identity_content = read_file_or_empty(IDENTITY_PATH)
+        user_content = read_file_or_empty(USER_PATH)
+        memory_content = read_file_or_empty(MEMORY_PATH)
+        agents_content = read_file_or_empty(AGENTS_PATH)
+        tools_content = read_file_or_empty(TOOLS_PATH)
         skills_content = load_skills()
         
         # Build the prompt
@@ -379,7 +384,7 @@ def handle_actions(actions: Dict):
         if actions.get("update_soul"):
             content = actions.get("content", "")
             if content:
-                soul_content = SOUL_PATH.read_text() if SOUL_PATH.exists() else ""
+                soul_content = read_file_or_empty(SOUL_PATH)
                 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
                 soul_content += f"\n\n## Reflection ({timestamp})\n{content}\n"
                 SOUL_PATH.write_text(soul_content)
@@ -389,7 +394,7 @@ def handle_actions(actions: Dict):
         if actions.get("update_memory"):
             content = actions.get("content", "")
             if content:
-                memory_content = MEMORY_PATH.read_text() if MEMORY_PATH.exists() else ""
+                memory_content = read_file_or_empty(MEMORY_PATH)
                 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
                 memory_content += f"\n\n### {timestamp}\n{content}\n"
                 MEMORY_PATH.write_text(memory_content)
@@ -399,7 +404,7 @@ def handle_actions(actions: Dict):
         if actions.get("update_user"):
             content = actions.get("content", "")
             if content:
-                user_content = USER_PATH.read_text() if USER_PATH.exists() else ""
+                user_content = read_file_or_empty(USER_PATH)
                 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
                 user_content += f"\n\n### Update ({timestamp})\n{content}\n"
                 USER_PATH.write_text(user_content)
