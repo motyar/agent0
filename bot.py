@@ -40,6 +40,14 @@ STATE_PATH = STORAGE_DIR / "state.json"
 # Cache file for Telegram updates (shared between check_updates.sh and bot.py)
 TELEGRAM_UPDATES_CACHE = Path("/tmp/gitbutler/telegram_updates.json")
 
+# In-memory session cache (cleared when the action run ends)
+SESSION_CACHE = {
+    "messages": [],
+    "start_time": None,
+    "start_notified": False,
+    "stop_notified": False
+}
+
 
 def ensure_directories():
     """Create necessary directories if they don't exist"""
@@ -81,7 +89,7 @@ I am GitButler, a self-aware personal AI assistant living entirely in this GitHu
             "last_run_time": datetime.now(timezone.utc).isoformat(),
             "version": "1.0.0"
         }
-        STATE_PATH.write_text(json.dumps(state, indent=2))
+        write_state(state)
 
 
 def read_json(path: Path, default=None) -> Any:
@@ -101,6 +109,14 @@ def write_json(path: Path, data: Any):
         path.write_text(json.dumps(data, indent=2))
     except Exception as e:
         log_error(f"Error writing {path}: {e}")
+
+
+def write_state(data: Dict):
+    """Write the runtime state without persisting session-only details"""
+    cleaned = dict(data)
+    cleaned.pop("messages_processed_this_session", None)
+    cleaned.pop("session_start", None)
+    write_json(STATE_PATH, cleaned)
 
 
 def log_error(message: str):
@@ -215,7 +231,7 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
             print(f"Ignoring message from chat_id: {chat_id}")
             # Update the offset to skip this message
             state["last_update_id"] = update_id
-            write_json(STATE_PATH, state)
+            write_state(state)
             return None
         
         text = message.get("text", "")
@@ -226,7 +242,7 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
             
             # Update state immediately to prevent reprocessing in case of parallel runs
             state["last_update_id"] = update_id
-            write_json(STATE_PATH, state)
+            write_state(state)
             print(f"Updated last_update_id to {update_id} to prevent duplicate processing")
             
             return {
@@ -239,7 +255,7 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
         else:
             # Non-text message, skip it by updating offset
             state["last_update_id"] = update_id
-            write_json(STATE_PATH, state)
+            write_state(state)
             return None
             
     except Exception as e:
@@ -292,8 +308,50 @@ def send_telegram_message(chat_id: str, text: str, reply_to_message_id: Optional
         return False
 
 
+def record_session_message(message: Dict):
+    """Store a lightweight copy of the message in the in-memory session cache"""
+    SESSION_CACHE["messages"].append({
+        "id": message.get("message_id"),
+        "text": message.get("text", "")
+    })
+
+
+def start_session():
+    """Mark the beginning of an action-run session and notify once"""
+    if SESSION_CACHE["start_notified"]:
+        return
+    SESSION_CACHE["messages"].clear()
+    SESSION_CACHE["stop_notified"] = False
+    SESSION_CACHE["start_time"] = datetime.now(timezone.utc)
+    notice = f"Starting GitButler session at {SESSION_CACHE['start_time'].strftime('%Y-%m-%d %H:%M:%S UTC')}"
+    if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
+        if send_telegram_message(TELEGRAM_CHAT_ID, notice):
+            SESSION_CACHE["start_notified"] = True
+            return
+    # If we cannot notify (missing credentials), still mark start to avoid retries
+    SESSION_CACHE["start_notified"] = True
+
+
+def end_session(final_mode: str = "completed"):
+    """Send a single stop notification and clear in-memory cache"""
+    if SESSION_CACHE["stop_notified"]:
+        return
+    message_count = len(SESSION_CACHE["messages"])
+    stop_notice = (
+        f"Stopping GitButler session ({final_mode}). "
+        f"Messages processed: {message_count}."
+    )
+    if SESSION_CACHE["start_notified"] and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
+        send_telegram_message(TELEGRAM_CHAT_ID, stop_notice)
+    SESSION_CACHE["messages"].clear()
+    SESSION_CACHE["start_time"] = None
+    SESSION_CACHE["stop_notified"] = True
+    SESSION_CACHE["start_notified"] = False
+
+
 def process_message(message: Dict):
     """Process a single message with GPT-4o-mini"""
+    record_session_message(message)
     openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
     if not openai_client:
         print("OpenAI client not initialized")
@@ -390,7 +448,7 @@ Output format:
         state = read_json(STATE_PATH, {})
         state["last_update_id"] = message.get("update_id", 0)  # Redundant safeguard
         state["last_run_time"] = datetime.now(timezone.utc).isoformat()
-        write_json(STATE_PATH, state)
+        write_state(state)
         
         git_commit_push(f"Processed message {message_id}")
         
@@ -405,7 +463,7 @@ Output format:
         # Update state for last_run_time (last_update_id already updated in fetch_new_messages)
         state = read_json(STATE_PATH, {})
         state["last_update_id"] = message.get("update_id", 0)  # Redundant safeguard
-        write_json(STATE_PATH, state)
+        write_state(state)
         git_commit_push(f"Error processing message {message.get('message_id')}")
 
 
@@ -512,9 +570,7 @@ def continuous_mode():
     state = read_json(STATE_PATH, {})
     if "mode" not in state:
         state["mode"] = "active"
-        state["session_start"] = datetime.now(timezone.utc).isoformat()
-        state["messages_processed_this_session"] = 0
-        write_json(STATE_PATH, state)
+        write_state(state)
     
     mode = state.get("mode", "active")
     
@@ -524,8 +580,7 @@ def continuous_mode():
     
     idle_counter = 0
     max_idle_cycles = 180  # 180 * 10sec = 30 minutes (when in active mode)
-    session_start = datetime.now(timezone.utc)
-    message_count = 0
+    session_start = SESSION_CACHE["start_time"] or datetime.now(timezone.utc)
     
     try:
         while True:
@@ -545,45 +600,40 @@ def continuous_mode():
                 if text in ["stop", "sleep", "pause"]:
                     print("🔴 Stop command received")
                     state["mode"] = "stopped"
-                    write_json(STATE_PATH, state)
-                    send_telegram_message(
-                        chat_id,
-                        "💤 Going to sleep. Send 'start' or 'wake up' to reactivate me."
-                    )
+                    write_state(state)
                     git_commit_push("Bot stopped by user command")
                     break
                 
                 elif text in ["start", "wake up", "wake"]:
                     print("🟢 Wake up command received")
                     state["mode"] = "active"
-                    state["session_start"] = datetime.now(timezone.utc).isoformat()
-                    state["messages_processed_this_session"] = 0
-                    write_json(STATE_PATH, state)
-                    send_telegram_message(
-                        chat_id,
-                        "👋 I'm awake and active! Ready to help."
-                    )
+                    write_state(state)
+                    SESSION_CACHE["messages"].clear()
+                    SESSION_CACHE["start_time"] = datetime.now(timezone.utc)
                     git_commit_push("Bot activated by user")
-                    session_start = datetime.now(timezone.utc)
-                    message_count = 0
+                    session_start = SESSION_CACHE["start_time"]
                     continue
                 
                 elif text == "status":
                     uptime = datetime.now(timezone.utc) - session_start
                     uptime_str = str(uptime).split('.')[0]  # Remove microseconds
-                    status_msg = format_status_message(mode, uptime_str, message_count, idle_counter, max_idle_cycles)
+                    status_msg = format_status_message(
+                        mode,
+                        uptime_str,
+                        len(SESSION_CACHE["messages"]),
+                        idle_counter,
+                        max_idle_cycles
+                    )
                     send_telegram_message(chat_id, status_msg)
                     state["last_update_id"] = message.get("update_id", 0)
-                    write_json(STATE_PATH, state)
+                    write_state(state)
                     continue
                 
                 # Process normal message
                 if mode != "stopped":
                     print(f"📨 Processing message: {text[:50]}...")
                     process_message(message)
-                    message_count += 1
-                    state["messages_processed_this_session"] = message_count
-                    write_json(STATE_PATH, state)
+                    write_state(state)
             
             else:
                 # No message received
@@ -599,7 +649,7 @@ def continuous_mode():
                 if idle_counter >= max_idle_cycles and mode == "active":
                     print(f"😴 Auto-sleeping after {max_idle_cycles * 10 / 60:.0f} minutes of inactivity")
                     state["mode"] = "idle"
-                    write_json(STATE_PATH, state)
+                    write_state(state)
                     git_commit_push("Auto-sleep: idle timeout reached")
                     break
             
@@ -615,7 +665,7 @@ def continuous_mode():
         print("\n⚠️  Interrupted by user (Ctrl+C)")
         state = read_json(STATE_PATH, {})
         state["mode"] = "stopped"
-        write_json(STATE_PATH, state)
+        write_state(state)
         git_commit_push("Bot interrupted by keyboard")
     
     except Exception as e:
@@ -627,7 +677,7 @@ def continuous_mode():
         elapsed = datetime.now(timezone.utc) - session_start
         print(f"\n📊 Session summary:")
         print(f"   Duration: {str(elapsed).split('.')[0]}")
-        print(f"   Messages processed: {message_count}")
+        print(f"   Messages processed: {len(SESSION_CACHE['messages'])}")
         print(f"   Final mode: {mode}")
 
 
@@ -635,6 +685,7 @@ def main():
     """Main execution - supports single or continuous mode"""
     print("GitButler starting...")
     print(f"Time: {datetime.now(timezone.utc).isoformat()}")
+    start_session()
     
     try:
         ensure_directories()
@@ -668,6 +719,9 @@ def main():
         log_error(f"Fatal error in main: {e}")
         print(f"\n❌ GitButler encountered an error: {e}")
         sys.exit(1)
+    finally:
+        final_state = read_json(STATE_PATH, {})
+        end_session(final_state.get("mode", "completed"))
 
 
 if __name__ == "__main__":

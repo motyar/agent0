@@ -59,9 +59,6 @@ agent0/
 │   ├── TOOLS.md               # This file
 │   ├── schedules.json         # Cron-based scheduled tasks
 │   └── state.json             # Runtime state (last poll offset)
-├── queues/                    # Message queues (committed to Git)
-│   ├── incoming.json          # Pending messages to process
-│   └── outgoing.json          # Responses to send
 └── skills/                    # Modular skill definitions
     └── */skill.md             # Individual skill files
 ```
@@ -106,6 +103,7 @@ Actions are extracted from GPT-4o-mini responses via JSON blocks:
 ## Limitations & Constraints
 - **No Real-Time**: 1-minute polling interval minimum
 - **No External DB**: All state in Git repository
+- **No Message Log Files**: Chat transcripts stay in-memory for the current run and are cleared when the action ends
 - **No File Uploads**: Text-only Telegram messages
 - **Token Limits**: 4000 max tokens per GPT response
 - **Rate Limits**: 
