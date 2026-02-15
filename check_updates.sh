@@ -15,23 +15,6 @@ if [ -z "$TELEGRAM_TOKEN" ]; then
     exit 1
 fi
 
-# Set notification user ID (defaults to 3181434 if not provided)
-NOTIFICATION_USER_ID="${NOTIFICATION_USER_ID:-3181434}"
-
-# Always send "Action running" notification
-echo ""
-echo "Sending 'Action running' notification to user ${NOTIFICATION_USER_ID}..."
-NOTIFICATION_RESPONSE=$(curl -s -f -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
-    -H "Content-Type: application/json" \
-    -d "{\"chat_id\":\"${NOTIFICATION_USER_ID}\",\"text\":\"Action running\"}")
-
-if echo "$NOTIFICATION_RESPONSE" | grep -q '"ok":true'; then
-    echo "✓ Notification sent successfully"
-else
-    echo "⚠ Warning: Failed to send notification"
-    echo "Response: $NOTIFICATION_RESPONSE"
-fi
-
 # Read last processed update_id from state.json
 STATE_FILE="storage/state.json"
 if [ ! -f "$STATE_FILE" ]; then
