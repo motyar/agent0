@@ -24,7 +24,7 @@ if [ ! -f "$STATE_FILE" ]; then
     LAST_UPDATE_ID=0
 else
     # Extract last_update_id from JSON using basic tools
-    LAST_UPDATE_ID=$(grep -o '"last_update_id":[0-9]*' "$STATE_FILE" | grep -o '[0-9]*')
+    LAST_UPDATE_ID=$(grep -o '"last_update_id":[[:space:]]*[0-9]*' "$STATE_FILE" | grep -o '[0-9]*')
     if [ -z "$LAST_UPDATE_ID" ]; then
         LAST_UPDATE_ID=0
     fi
