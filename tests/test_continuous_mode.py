@@ -43,8 +43,12 @@ def test_state_transitions():
     """Test state transitions between active/idle/stopped"""
     state_path = bot.STATE_PATH
     
+    # Read current state
+    original_state = bot.read_json(state_path)
+    
     # Test active -> stopped
-    state = {"mode": "active"}
+    state = original_state.copy()
+    state["mode"] = "active"
     bot.write_json(state_path, state)
     state = bot.read_json(state_path)
     assert state["mode"] == "active"
@@ -60,6 +64,9 @@ def test_state_transitions():
     bot.write_json(state_path, state)
     state = bot.read_json(state_path)
     assert state["mode"] == "idle"
+    
+    # Restore original state
+    bot.write_json(state_path, original_state)
     
     print("✓ State transitions test passed")
 
