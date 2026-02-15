@@ -9,6 +9,7 @@ import sys
 import json
 import re
 import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional, Any
@@ -485,36 +486,170 @@ def create_github_issue(title: str, body: str):
         log_error(f"Error creating GitHub issue: {e}")
 
 
+def continuous_mode():
+    """Run continuously until stopped by user or idle timeout"""
+    print("🟢 Entering continuous mode...")
+    print("Send 'stop', 'sleep', or 'pause' to exit")
+    print("Bot will auto-sleep after 30 minutes of inactivity\n")
+    
+    # Initialize state
+    state = read_json(STATE_PATH, {})
+    if "mode" not in state:
+        state["mode"] = "active"
+        state["session_start"] = datetime.now(timezone.utc).isoformat()
+        state["messages_processed_this_session"] = 0
+        write_json(STATE_PATH, state)
+    
+    mode = state.get("mode", "active")
+    
+    if mode == "stopped":
+        print("⚠️  Bot is in stopped state. Waiting for 'start' command...")
+        # Still check for messages to see if user sends "start"
+    
+    idle_counter = 0
+    max_idle_cycles = 180  # 180 * 10sec = 30 minutes
+    session_start = datetime.now(timezone.utc)
+    message_count = 0
+    
+    try:
+        while True:
+            # Reload state to check for external changes
+            state = read_json(STATE_PATH, {})
+            mode = state.get("mode", "active")
+            
+            # Check for new messages
+            message = fetch_new_messages(use_cached=False)
+            
+            if message:
+                idle_counter = 0  # Reset idle counter
+                text = message.get("text", "").lower().strip()
+                chat_id = message.get("chat_id", "")
+                
+                # Handle control commands
+                if text in ["stop", "sleep", "pause"]:
+                    print("🔴 Stop command received")
+                    state["mode"] = "stopped"
+                    write_json(STATE_PATH, state)
+                    send_telegram_message(
+                        chat_id,
+                        "💤 Going to sleep. Send 'start' or 'wake up' to reactivate me."
+                    )
+                    git_commit_push("Bot stopped by user command")
+                    break
+                
+                elif text in ["start", "wake up", "wake"]:
+                    print("🟢 Wake up command received")
+                    state["mode"] = "active"
+                    state["session_start"] = datetime.now(timezone.utc).isoformat()
+                    state["messages_processed_this_session"] = 0
+                    write_json(STATE_PATH, state)
+                    send_telegram_message(
+                        chat_id,
+                        "👋 I'm awake and active! Ready to help."
+                    )
+                    git_commit_push("Bot activated by user")
+                    session_start = datetime.now(timezone.utc)
+                    message_count = 0
+                    continue
+                
+                elif text == "status":
+                    uptime = datetime.now(timezone.utc) - session_start
+                    uptime_str = str(uptime).split('.')[0]  # Remove microseconds
+                    status_msg = f"""📊 **Bot Status**
+                    
+Mode: {mode.upper()} {'🟢' if mode == 'active' else '🟡' if mode == 'idle' else '💤'}
+Uptime: {uptime_str}
+Messages processed: {message_count}
+Idle cycles: {idle_counter}/{max_idle_cycles}
+                    """
+                    send_telegram_message(chat_id, status_msg)
+                    state["last_update_id"] = message.get("update_id", 0)
+                    write_json(STATE_PATH, state)
+                    continue
+                
+                # Process normal message
+                if mode != "stopped":
+                    print(f"📨 Processing message: {text[:50]}...")
+                    process_message(message)
+                    message_count += 1
+                    state["messages_processed_this_session"] = message_count
+                    write_json(STATE_PATH, state)
+            
+            else:
+                # No message received
+                idle_counter += 1
+                
+                # Print heartbeat every 30 cycles (5 minutes)
+                if idle_counter % 30 == 0:
+                    elapsed = datetime.now(timezone.utc) - session_start
+                    print(f"💓 Heartbeat: {idle_counter} idle cycles (~{idle_counter * 10 / 60:.1f} min), mode={mode}")
+                
+                # Auto-sleep after idle period
+                if idle_counter >= max_idle_cycles and mode == "active":
+                    print(f"😴 Auto-sleeping after {max_idle_cycles * 10 / 60:.0f} minutes of inactivity")
+                    state["mode"] = "idle"
+                    write_json(STATE_PATH, state)
+                    git_commit_push("Auto-sleep: idle timeout reached")
+                    break
+            
+            # Determine sleep interval based on mode
+            if mode == "active":
+                time.sleep(10)  # Check every 10 seconds when active
+            elif mode == "idle":
+                time.sleep(30)  # Check every 30 seconds when idle
+            else:  # stopped
+                time.sleep(30)  # Check occasionally for start command
+    
+    except KeyboardInterrupt:
+        print("\n⚠️  Interrupted by user (Ctrl+C)")
+        state = read_json(STATE_PATH, {})
+        state["mode"] = "stopped"
+        write_json(STATE_PATH, state)
+        git_commit_push("Bot interrupted by keyboard")
+    
+    except Exception as e:
+        log_error(f"Error in continuous mode: {e}")
+        print(f"❌ Error in continuous mode: {e}")
+        raise
+    
+    finally:
+        elapsed = datetime.now(timezone.utc) - session_start
+        print(f"\n📊 Session summary:")
+        print(f"   Duration: {str(elapsed).split('.')[0]}")
+        print(f"   Messages processed: {message_count}")
+        print(f"   Final mode: {mode}")
+
+
 def main():
-    """Main execution - process one message per run"""
+    """Main execution - supports single or continuous mode"""
     print("GitButler starting...")
     print(f"Time: {datetime.now(timezone.utc).isoformat()}")
     
     try:
-        # Ensure directories and files exist
         ensure_directories()
         ensure_files()
         
-        # Check if update check was already done by check_updates.sh
-        skip_check = os.environ.get("SKIP_UPDATE_CHECK", "").lower() == "true"
+        # Check for RUN_MODE environment variable
+        run_mode = os.environ.get("RUN_MODE", "continuous").lower()
         
-        if skip_check:
-            # Step 1: Skip checking for messages since check_updates.sh already confirmed updates exist
-            print("\n1. Update check already done by check_updates.sh, using cached response...")
+        if run_mode == "continuous":
+            continuous_mode()
         else:
-            # Step 1: Check for new messages from Telegram
-            print("\n1. Checking for new messages...")
-        
-        message = fetch_new_messages(use_cached=skip_check)
-        
-        # Step 2: If no messages, stop
-        if not message:
-            print("\n✅ No new messages to process. Exiting.")
-            return
-        
-        # Step 3: Process the single message
-        print(f"\n2. Processing message {message.get('message_id')}...")
-        process_message(message)
+            # Original single-message mode (fallback)
+            # Check if update check was already done by check_updates.sh
+            skip_check = os.environ.get("SKIP_UPDATE_CHECK", "").lower() == "true"
+            
+            if skip_check:
+                print("\n1. Update check already done by check_updates.sh, using cached response...")
+            else:
+                print("\n1. Checking for new messages...")
+            
+            message = fetch_new_messages(use_cached=skip_check)
+            if message:
+                print(f"\n2. Processing message {message.get('message_id')}...")
+                process_message(message)
+            else:
+                print("✅ No new messages to process.")
         
         print("\n✅ GitButler run completed successfully")
         
