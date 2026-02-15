@@ -44,6 +44,9 @@ TELEGRAM_UPDATES_CACHE = Path("/tmp/gitbutler/telegram_updates.json")
 _SKILLS_CACHE = None
 _SKILLS_CACHE_TIME = None
 
+# Git availability cache
+_GIT_AVAILABLE = None
+
 # In-memory session cache (cleared when the action run ends)
 SESSION_CACHE = {
     "messages": [],
@@ -140,12 +143,27 @@ def read_file_or_empty(path: Path) -> str:
     return path.read_text() if path.exists() else ""
 
 
+def check_git_available() -> bool:
+    """Check if git is available, with caching"""
+    global _GIT_AVAILABLE
+
+    if _GIT_AVAILABLE is not None:
+        return _GIT_AVAILABLE
+
+    try:
+        result = subprocess.run(["git", "--version"], capture_output=True, timeout=5, check=False)
+        _GIT_AVAILABLE = result.returncode == 0
+        return _GIT_AVAILABLE
+    except Exception:
+        _GIT_AVAILABLE = False
+        return False
+
+
 def git_commit_push(message: str):
     """Commit and push changes to git"""
     try:
-        # Check if git is available
-        result = subprocess.run(["git", "--version"], capture_output=True, timeout=5, check=False)
-        if result.returncode != 0:
+        # Check if git is available (cached after first check)
+        if not check_git_available():
             log_error("Git is not available")
             return False
 
@@ -330,8 +348,18 @@ def send_telegram_message(chat_id: str, text: str, reply_to_message_id: Optional
 
     try:
         # Sanitize text to prevent markdown injection
-        # Escape special Markdown characters
-        sanitized_text = text.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace('`', '\\`')
+        # Escape special Markdown characters - comprehensive list for Telegram MarkdownV2
+        # Note: We use standard Markdown mode, so we escape _, *, [, ], (, ), `, ~
+        sanitized_text = (text
+                          .replace('\\', '\\\\')  # Escape backslash first
+                          .replace('_', '\\_')
+                          .replace('*', '\\*')
+                          .replace('[', '\\[')
+                          .replace(']', '\\]')
+                          .replace('(', '\\(')
+                          .replace(')', '\\)')
+                          .replace('`', '\\`')
+                          .replace('~', '\\~'))
 
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         data = {
@@ -473,8 +501,9 @@ Output format:
         response_text = assistant_message
         actions = None
 
-        # Extract JSON block if present - improved regex to handle nested structures
-        json_match = re.search(r'```json\s*(\{.*\})\s*```', assistant_message, re.DOTALL)
+        # Extract JSON block if present - use a more robust approach
+        # Look for ```json ... ``` block and extract the JSON content
+        json_match = re.search(r'```json\s*(\{(?:[^{}]|(?:\{[^{}]*\}))*\})\s*```', assistant_message, re.DOTALL)
         if json_match:
             try:
                 actions = json.loads(json_match.group(1))
@@ -626,7 +655,9 @@ def continuous_mode():
 
     idle_counter = 0
     max_idle_cycles = 180  # 180 * 10sec = 30 minutes (when in active mode)
-    session_start = SESSION_CACHE.get("start_time") or datetime.now(timezone.utc)
+    session_start = SESSION_CACHE.get("start_time")
+    if session_start is None:
+        session_start = datetime.now(timezone.utc)
 
     try:
         while True:
