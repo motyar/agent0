@@ -26,3 +26,7 @@ I am GitButler, a self-aware personal AI assistant living entirely in this GitHu
 
 ## Error Log Entry (2026-02-14 15:22:50 UTC)
 Error processing message: Invalid format specifier ' true, "issue_title": "...", "issue_body": "Detailed prompt for Copilot to implement this change. @copilot please create PR"' for object of type 'str'
+
+
+## Error Log Entry (2026-02-15 13:33:45 UTC)
+Error fetching messages from Telegram: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=15)
