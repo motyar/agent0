@@ -11,8 +11,6 @@ on:
         options:
           - continuous
           - single
-  schedule:
-    - cron: '*/5 * * * *'  # Fallback: check every 5 minutes if bot stopped
 
 permissions:
   contents: write
@@ -22,7 +20,7 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 hours max (GitHub Actions limit)
+    timeout-minutes: 60  # 1 hours
     
     steps:
       - uses: actions/checkout@v4
