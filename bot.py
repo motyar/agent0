@@ -10,6 +10,7 @@ import json
 import re
 import subprocess
 import time
+import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional, Any
@@ -486,6 +487,18 @@ def create_github_issue(title: str, body: str):
         log_error(f"Error creating GitHub issue: {e}")
 
 
+def format_status_message(mode: str, uptime_str: str, message_count: int, idle_counter: int, max_idle_cycles: int) -> str:
+    """Format the bot status message"""
+    return textwrap.dedent(f"""
+    📊 **Bot Status**
+    
+    Mode: {mode.upper()} {'🟢' if mode == 'active' else '🟡' if mode == 'idle' else '💤'}
+    Uptime: {uptime_str}
+    Messages processed: {message_count}
+    Idle cycles: {idle_counter}/{max_idle_cycles}
+    """).strip()
+
+
 def continuous_mode():
     """Run continuously until stopped by user or idle timeout"""
     print("🟢 Entering continuous mode...")
@@ -507,7 +520,7 @@ def continuous_mode():
         # Still check for messages to see if user sends "start"
     
     idle_counter = 0
-    max_idle_cycles = 180  # 180 * 10sec = 30 minutes
+    max_idle_cycles = 180  # 180 * 10sec = 30 minutes (when in active mode)
     session_start = datetime.now(timezone.utc)
     message_count = 0
     
@@ -555,13 +568,7 @@ def continuous_mode():
                 elif text == "status":
                     uptime = datetime.now(timezone.utc) - session_start
                     uptime_str = str(uptime).split('.')[0]  # Remove microseconds
-                    status_msg = f"""📊 **Bot Status**
-                    
-Mode: {mode.upper()} {'🟢' if mode == 'active' else '🟡' if mode == 'idle' else '💤'}
-Uptime: {uptime_str}
-Messages processed: {message_count}
-Idle cycles: {idle_counter}/{max_idle_cycles}
-                    """
+                    status_msg = format_status_message(mode, uptime_str, message_count, idle_counter, max_idle_cycles)
                     send_telegram_message(chat_id, status_msg)
                     state["last_update_id"] = message.get("update_id", 0)
                     write_json(STATE_PATH, state)
@@ -579,10 +586,11 @@ Idle cycles: {idle_counter}/{max_idle_cycles}
                 # No message received
                 idle_counter += 1
                 
-                # Print heartbeat every 30 cycles (5 minutes)
+                # Print heartbeat every 30 cycles (~5 minutes in active mode)
                 if idle_counter % 30 == 0:
                     elapsed = datetime.now(timezone.utc) - session_start
-                    print(f"💓 Heartbeat: {idle_counter} idle cycles (~{idle_counter * 10 / 60:.1f} min), mode={mode}")
+                    minutes_elapsed = idle_counter * 10 / 60 if mode == "active" else idle_counter * 30 / 60
+                    print(f"💓 Heartbeat: {idle_counter} idle cycles (~{minutes_elapsed:.1f} min), mode={mode}")
                 
                 # Auto-sleep after idle period
                 if idle_counter >= max_idle_cycles and mode == "active":
