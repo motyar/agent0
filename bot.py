@@ -513,8 +513,8 @@ Output format:
             except Exception as e:
                 log_error(f"Error parsing JSON action: {e}")
 
-        # Send response directly to Telegram (without reply)
-        send_telegram_message(chat_id, response_text)
+        # Send response directly to Telegram as a reply
+        send_telegram_message(chat_id, response_text, message_id)
 
         # Handle actions
         if actions:
@@ -529,10 +529,11 @@ Output format:
 
     except Exception as e:
         log_error(f"Error processing message: {e}")
-        # Send error message to user (without reply)
+        # Send error message to user as a reply
         send_telegram_message(
             message.get("chat_id", TELEGRAM_CHAT_ID),
-            "I encountered an error processing your message. Please try again."
+            "I encountered an error processing your message. Please try again.",
+            message.get("message_id")
         )
 
         # Update state for last_run_time (last_update_id already updated in fetch_new_messages)
