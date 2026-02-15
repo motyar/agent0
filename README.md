@@ -26,14 +26,13 @@ User → Telegram → GitHub Actions (workflow dispatch) → GitButler → Respo
 ### How It Works
 
 1. **Early Check**: Before installing any dependencies, checks Telegram API for new messages (lightweight)
-2. **Notify**: Sends "Action running" notification to configured user
-3. **Exit Fast**: If no new messages, exits immediately without installing dependencies
-4. **Fetch**: If updates exist, installs dependencies and fetches message details
-5. **Process**: Loads soul.md + skills, sends to GPT-4o-mini, gets response
-6. **Send**: Sends response directly to Telegram (no queue)
-7. **Act**: Handles actions (update soul, create issues/PRs, etc.)
-8. **Track**: Updates last_update_id in state.json
-9. **Commit**: Pushes all changes to Git
+2. **Exit Fast**: If no new messages, exits immediately without installing dependencies
+3. **Fetch**: If updates exist, installs dependencies and fetches message details
+4. **Process**: Loads soul.md + skills, sends to GPT-4o-mini, gets response
+5. **Send**: Sends response directly to Telegram (no queue)
+6. **Act**: Handles actions (update soul, create issues/PRs, etc.)
+7. **Track**: Updates last_update_id in state.json
+8. **Commit**: Pushes all changes to Git
 
 **Key Design Principles**:
 - ✅ Check for updates before installing dependencies (optimization)

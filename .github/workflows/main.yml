@@ -27,7 +27,6 @@ jobs:
         id: check_updates
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          NOTIFICATION_USER_ID: "3181434"
         run: |
           bash check_updates.sh
         continue-on-error: true
