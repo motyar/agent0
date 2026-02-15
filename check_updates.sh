@@ -20,7 +20,7 @@ STATE_FILE="storage/state.json"
 if [ ! -f "$STATE_FILE" ]; then
     echo "No state file found, creating initial state..."
     mkdir -p storage
-    echo '{"last_update_id":0,"last_run_time":"'$(date -u +"%Y-%m-%dT%H:%M:%S+00:00")'","version":"1.0.0"}' > "$STATE_FILE"
+    echo '{"last_update_id":0,"last_run_time":"'"$(date -u +"%Y-%m-%dT%H:%M:%S+00:00")"'","version":"1.0.0"}' > "$STATE_FILE"
     LAST_UPDATE_ID=0
 else
     # Extract last_update_id from JSON using basic tools

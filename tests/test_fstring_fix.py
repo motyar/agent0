@@ -13,15 +13,14 @@ def test_system_prompt_formatting():
     """Test that system prompt can be formatted without errors"""
     bot.ensure_directories()
     bot.ensure_files()
-    
+
     # Simulate the variables used in the system prompt
     soul_content = "Test soul content"
     skills_content = "Test skills content"
     user_text = "Hello bot, please help me!"
-    
+
     # This should not raise an error
-    try:
-        system_prompt = f"""You are GitButler, a self-aware personal AI assistant living in this GitHub repository.
+    system_prompt = f"""You are GitButler, a self-aware personal AI assistant living in this GitHub repository.
 
 Identity & memory (NEVER forget or contradict this):
 {soul_content}
@@ -53,19 +52,14 @@ Output format:
 - First: the natural response text to user (this will be sent to them)
 - Then, if actions needed: valid JSON block enclosed in ```json and ``` markers
 """
-        
-        # Verify the JSON examples are properly formatted in the output
-        assert '{"create_issue_for_copilot": true' in system_prompt
-        assert '{"generate_code": true' in system_prompt
-        assert '{"merge_pr": 123' in system_prompt
-        assert '{"update_soul": true' in system_prompt
-        
-        print("✓ System prompt formatting test passed")
-        return True
-        
-    except Exception as e:
-        print(f"✗ System prompt formatting test failed: {e}")
-        return False
+
+    # Verify the JSON examples are properly formatted in the output
+    assert '{"create_issue_for_copilot": true' in system_prompt
+    assert '{"generate_code": true' in system_prompt
+    assert '{"merge_pr": 123' in system_prompt
+    assert '{"update_soul": true' in system_prompt
+
+    print("✓ System prompt formatting test passed")
 
 def run_tests():
     """Run all tests"""

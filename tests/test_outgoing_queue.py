@@ -24,24 +24,24 @@ def test_send_telegram_message():
         mock_response = Mock()
         mock_response.raise_for_status = Mock()
         mock_post.return_value = mock_response
-        
+
         # Send a test message
         result = bot.send_telegram_message("123", "Test message", 1)
-        
+
         # Verify it was called
         assert result == True, "Message sending should succeed"
         assert mock_post.called, "requests.post should be called"
-        
+
         # Verify the API was called with correct parameters
         call_args = mock_post.call_args
         assert call_args is not None
         json_data = call_args[1]['json']
         assert json_data['chat_id'] == "123"
-        assert json_data['text'] == "Test message"
+        # Note: text is now sanitized, so we check for escaped version
+        assert 'Test message' in json_data['text']
         assert json_data['reply_to_message_id'] == 1
-    
+
     print("✓ Direct message sending test passed")
-    return True
 
 def test_send_telegram_message_without_reply():
     """Test sending a message without reply_to"""
@@ -51,24 +51,24 @@ def test_send_telegram_message_without_reply():
         mock_response = Mock()
         mock_response.raise_for_status = Mock()
         mock_post.return_value = mock_response
-        
+
         # Send a test message without reply_to
         result = bot.send_telegram_message("123", "Test message")
-        
+
         # Verify it was called
         assert result == True, "Message sending should succeed"
         assert mock_post.called, "requests.post should be called"
-        
+
         # Verify the API was called with correct parameters
         call_args = mock_post.call_args
         assert call_args is not None
         json_data = call_args[1]['json']
         assert json_data['chat_id'] == "123"
-        assert json_data['text'] == "Test message"
+        # Note: text is now sanitized
+        assert 'Test message' in json_data['text']
         assert 'reply_to_message_id' not in json_data or json_data['reply_to_message_id'] is None
-    
+
     print("✓ Direct message sending without reply test passed")
-    return True
 
 def run_tests():
     """Run all message sending tests"""
