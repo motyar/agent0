@@ -60,7 +60,8 @@ fi
 
 # If we get here, there are new updates
 # Save the response to a file so bot.py doesn't need to check again
-# Note: This path must match TELEGRAM_UPDATES_CACHE constant in bot.py
+# IMPORTANT: This path must match TELEGRAM_UPDATES_CACHE constant in bot.py
+# Path: /tmp/gitbutler/telegram_updates.json
 mkdir -p /tmp/gitbutler
 printf '%s' "$RESPONSE" > /tmp/gitbutler/telegram_updates.json
 echo ""
