@@ -30,7 +30,7 @@ jobs:
       - name: Check for updates (before installing dependencies)
         id: check_updates
         env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           bash check_updates.sh
         continue-on-error: true
