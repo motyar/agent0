@@ -218,6 +218,12 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
         
         if text:
             print(f"Found new message (ID: {message_id}): {text[:50]}...")
+            
+            # Update state immediately to prevent reprocessing in case of parallel runs
+            state["last_update_id"] = update_id
+            write_json(STATE_PATH, state)
+            print(f"Updated last_update_id to {update_id} to prevent duplicate processing")
+            
             return {
                 "update_id": update_id,
                 "message_id": message_id,
@@ -375,9 +381,9 @@ Output format:
         if actions:
             handle_actions(actions)
         
-        # Update state to mark message as processed (using update_id)
+        # Update state (last_update_id already updated in fetch_new_messages, this updates last_run_time)
         state = read_json(STATE_PATH, {})
-        state["last_update_id"] = message.get("update_id", 0)
+        state["last_update_id"] = message.get("update_id", 0)  # Redundant safeguard
         state["last_run_time"] = datetime.now(timezone.utc).isoformat()
         write_json(STATE_PATH, state)
         
@@ -391,9 +397,9 @@ Output format:
             f"I encountered an error processing your message: {str(e)[:200]}"
         )
         
-        # Still update state to avoid reprocessing
+        # Update state for last_run_time (last_update_id already updated in fetch_new_messages)
         state = read_json(STATE_PATH, {})
-        state["last_update_id"] = message.get("update_id", 0)
+        state["last_update_id"] = message.get("update_id", 0)  # Redundant safeguard
         write_json(STATE_PATH, state)
         git_commit_push(f"Error processing message {message.get('message_id')}")
 
