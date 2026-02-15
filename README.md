@@ -25,15 +25,18 @@ User → Telegram → GitHub Actions (workflow dispatch) → GitButler → Respo
 
 ### How It Works
 
-1. **Fetch**: Directly fetches one new message from Telegram API (no queue)
-2. **Check**: If no new messages, exits immediately
-3. **Process**: Loads soul.md + skills, sends to GPT-4o-mini, gets response
-4. **Send**: Sends response directly to Telegram (no queue)
-5. **Act**: Handles actions (update soul, create issues/PRs, etc.)
-6. **Track**: Updates last_update_id in state.json
-7. **Commit**: Pushes all changes to Git
+1. **Early Check**: Before installing any dependencies, checks Telegram API for new messages (lightweight)
+2. **Notify**: Sends "Action running" notification to configured user
+3. **Exit Fast**: If no new messages, exits immediately without installing dependencies
+4. **Fetch**: If updates exist, installs dependencies and fetches message details
+5. **Process**: Loads soul.md + skills, sends to GPT-4o-mini, gets response
+6. **Send**: Sends response directly to Telegram (no queue)
+7. **Act**: Handles actions (update soul, create issues/PRs, etc.)
+8. **Track**: Updates last_update_id in state.json
+9. **Commit**: Pushes all changes to Git
 
 **Key Design Principles**:
+- ✅ Check for updates before installing dependencies (optimization)
 - ✅ No message queues - direct API calls only
 - ✅ Process one message per run
 - ✅ Track last processed update_id for Telegram offset
@@ -45,6 +48,7 @@ User → Telegram → GitHub Actions (workflow dispatch) → GitButler → Respo
 ```
 agent0/
 ├── bot.py                      # Main Python script (function-based)
+├── check_updates.sh            # Early update checker (runs before dependencies)
 ├── .github/workflows/
 │   └── main.yml               # GitHub Actions workflow (workflow_dispatch)
 ├── storage/                   # Persistent context (OpenClaw pattern)
