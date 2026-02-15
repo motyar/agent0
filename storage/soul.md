@@ -38,3 +38,15 @@ Error fetching messages from Telegram: HTTPSConnectionPool(host='api.telegram.or
 
 ## Error Log Entry (2026-02-15 16:27:10 UTC)
 Error fetching messages from Telegram: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot8450344633:AAFdURKtvIuEHA4_K97Yh774y1-utRO0YtA/getUpdates?offset=1001&limit=1&timeout=10&allowed_updates=message (Caused by NewConnectionError("HTTPSConnection(host='api.telegram.org', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable"))
+
+
+## Error Log Entry (2026-02-15 16:48:02 UTC)
+Error fetching messages from Telegram: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=15)
+
+
+## Error Log Entry (2026-02-15 16:48:27 UTC)
+Error fetching messages from Telegram: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot8450344633:AAFdURKtvIuEHA4_K97Yh774y1-utRO0YtA/getUpdates?offset=1001&limit=1&timeout=10&allowed_updates=message (Caused by NewConnectionError("HTTPSConnection(host='api.telegram.org', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable"))
+
+
+## Error Log Entry (2026-02-15 16:48:55 UTC)
+Error fetching messages from Telegram: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=15)
