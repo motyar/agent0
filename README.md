@@ -18,28 +18,35 @@ GitButler is a personal AI helper that runs on GitHub Actions, communicates via 
 ## 🏗️ Architecture
 
 ```
-User → Telegram → GitHub Actions (every 1 min) → GitButler → Response
+User → Telegram → GitHub Actions (workflow dispatch) → GitButler → Response
                            ↓
-                      Git commits (queues, memory, soul)
+                      Git commits (state, memory, soul)
 ```
 
 ### How It Works
 
-1. **Poll**: Checks Telegram for new messages every minute
-2. **Queue**: Stores incoming messages in `queues/incoming.json` (FIFO)
+1. **Fetch**: Directly fetches one new message from Telegram API (no queue)
+2. **Check**: If no new messages, exits immediately
 3. **Process**: Loads soul.md + skills, sends to GPT-4o-mini, gets response
-4. **Act**: Handles actions (update soul, create issues/PRs, etc.)
-5. **Send**: Delivers responses via `queues/outgoing.json`
-6. **Schedule**: Checks for due scheduled tasks
+4. **Send**: Sends response directly to Telegram (no queue)
+5. **Act**: Handles actions (update soul, create issues/PRs, etc.)
+6. **Track**: Updates last_message_id in state.json
 7. **Commit**: Pushes all changes to Git
+
+**Key Design Principles**:
+- ✅ No message queues - direct API calls only
+- ✅ Process one message per run
+- ✅ Track last processed message_id
+- ✅ Stop immediately if no new messages
+- ✅ Simple function-based architecture (no classes)
 
 ## 📁 Repository Structure
 
 ```
 agent0/
-├── bot.py                      # Main Python script
+├── bot.py                      # Main Python script (function-based)
 ├── .github/workflows/
-│   └── main.yml               # Runs every 1 minute
+│   └── main.yml               # GitHub Actions workflow (workflow_dispatch)
 ├── storage/                   # Persistent context (OpenClaw pattern)
 │   ├── soul.md                # Core personality & reflections
 │   ├── IDENTITY.md            # Identity card (name, role, capabilities)
@@ -47,14 +54,12 @@ agent0/
 │   ├── MEMORY.md              # Long-term episodic memory
 │   ├── AGENTS.md              # Operating instructions & guidelines
 │   ├── TOOLS.md               # Available tools & environment docs
-│   ├── schedules.json         # Cron-based scheduled tasks
-│   └── state.json             # Last poll offset, runtime state
-├── queues/
-│   ├── incoming.json          # Pending messages (FIFO)
-│   └── outgoing.json          # Responses to send
+│   └── state.json             # Last processed message_id, runtime state
 └── skills/
     └── */skill.md             # Modular skill definitions
 ```
+
+**Note**: The `queues/` directory has been removed - no more message queuing!
 
 ## 🚀 Quick Setup
 
@@ -80,16 +85,19 @@ Add these secrets (they are already configured for this repo):
 
 ### 3. Enable GitHub Actions
 
-The workflow is configured to run every minute automatically.
+The workflow is configured to run on `workflow_dispatch` (manual trigger).
+You can trigger it manually or set up a schedule by adding a cron trigger to the workflow file.
 
 ### 4. Start Chatting!
 
-Send a message to your Telegram bot. Within 1 minute, GitButler will:
-- Pick up your message
+Send a message to your Telegram bot. Then trigger the workflow to:
+- Fetch your message directly from Telegram
 - Load its soul and relevant skills
 - Think using GPT-4o-mini
-- Respond to you
+- Respond to you directly
 - Commit the conversation to Git
+
+**Note**: The bot processes ONE message per run and exits if no new messages are found.
 
 ## 💬 Usage Examples
 
@@ -146,19 +154,10 @@ The bot can update these files through JSON actions in its responses:
 
 This makes your bot feel "alive" and continuous — it remembers you and gets better over time.
 
-## 📅 Scheduled Tasks
+## 📅 ~~Scheduled Tasks~~ (Removed)
 
-Edit `storage/schedules.json` to add recurring tasks:
-
-```json
-{
-  "id": 2,
-  "cron": "0 20 * * *",
-  "description": "Evening summary",
-  "prompt": "Summarize what we accomplished today",
-  "last_run": null
-}
-```
+The scheduled tasks feature has been removed to simplify the bot architecture. 
+The bot now focuses solely on processing incoming messages one at a time.
 
 ## 🎨 Skills System
 
