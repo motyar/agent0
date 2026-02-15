@@ -21,6 +21,13 @@ def test_fetch_with_cache():
     cache_file = cache_dir / "telegram_updates.json"
     
     # Create mock telegram response
+    # Use a valid chat_id from environment or default
+    chat_id_str = os.environ.get("TELEGRAM_CHAT_ID", "123456789")
+    try:
+        chat_id = int(chat_id_str)
+    except ValueError:
+        chat_id = 123456789  # Fallback to default if not numeric
+    
     mock_response = {
         "ok": True,
         "result": [
@@ -29,7 +36,7 @@ def test_fetch_with_cache():
                 "message": {
                     "message_id": 100,
                     "chat": {
-                        "id": int(os.environ.get("TELEGRAM_CHAT_ID", "123456789"))
+                        "id": chat_id
                     },
                     "text": "Test message"
                 }

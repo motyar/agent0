@@ -61,7 +61,7 @@ fi
 # If we get here, there are new updates
 # Save the response to a file so bot.py doesn't need to check again
 mkdir -p /tmp/gitbutler
-echo "$RESPONSE" > /tmp/gitbutler/telegram_updates.json
+printf '%s' "$RESPONSE" > /tmp/gitbutler/telegram_updates.json
 echo ""
 echo "========================================="
 echo "✅ New updates found! Proceeding with full bot execution."
