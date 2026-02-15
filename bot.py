@@ -474,11 +474,11 @@ def main():
         if skip_check:
             # Step 1: Skip checking for messages since check_updates.sh already confirmed updates exist
             print("\n1. Update check already done by check_updates.sh, fetching next message...")
-            message = fetch_new_messages()
         else:
             # Step 1: Check for new messages from Telegram
             print("\n1. Checking for new messages...")
-            message = fetch_new_messages()
+        
+        message = fetch_new_messages()
         
         # Step 2: If no messages, stop
         if not message:
