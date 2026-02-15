@@ -40,6 +40,10 @@ STATE_PATH = STORAGE_DIR / "state.json"
 # Cache file for Telegram updates (shared between check_updates.sh and bot.py)
 TELEGRAM_UPDATES_CACHE = Path("/tmp/gitbutler/telegram_updates.json")
 
+# Skills cache (loaded once and reused)
+_SKILLS_CACHE = None
+_SKILLS_CACHE_TIME = None
+
 # In-memory session cache (cleared when the action run ends)
 SESSION_CACHE = {
     "messages": [],
@@ -140,7 +144,7 @@ def git_commit_push(message: str):
     """Commit and push changes to git"""
     try:
         # Check if git is available
-        result = subprocess.run(["git", "--version"], capture_output=True, timeout=5)
+        result = subprocess.run(["git", "--version"], capture_output=True, timeout=5, check=False)
         if result.returncode != 0:
             log_error("Git is not available")
             return False
@@ -153,7 +157,7 @@ def git_commit_push(message: str):
         subprocess.run(["git", "add", "."], check=True, timeout=10)
 
         # Commit (may fail if no changes)
-        result = subprocess.run(["git", "commit", "-m", message], capture_output=True, timeout=10)
+        result = subprocess.run(["git", "commit", "-m", message], capture_output=True, timeout=10, check=False)
 
         if result.returncode == 0:
             # Push
@@ -195,7 +199,7 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
         if use_cached:
             if TELEGRAM_UPDATES_CACHE.exists():
                 try:
-                    data = json.loads(TELEGRAM_UPDATES_CACHE.read_text())
+                    data = json.loads(TELEGRAM_UPDATES_CACHE.read_text(encoding='utf-8'))
                     used_cache = True
                     print("Successfully loaded cached Telegram response from check_updates.sh")
                 except Exception as e:
@@ -282,8 +286,21 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
         return None
 
 
-def load_skills() -> str:
-    """Load relevant skills from skills directory"""
+def load_skills(use_cache: bool = True) -> str:
+    """Load relevant skills from skills directory with optional caching
+
+    Args:
+        use_cache: If True, use cached skills if available. Set to False to force reload.
+
+    Returns:
+        Combined skills content as a string
+    """
+    global _SKILLS_CACHE, _SKILLS_CACHE_TIME
+
+    # Return cached skills if available and requested
+    if use_cache and _SKILLS_CACHE is not None:
+        return _SKILLS_CACHE
+
     skills_content = []
     try:
         if SKILLS_DIR.exists():
@@ -297,7 +314,13 @@ def load_skills() -> str:
     except Exception as e:
         log_error(f"Error scanning skills directory: {e}")
 
-    return "\n".join(skills_content) if skills_content else "No skills loaded."
+    result = "\n".join(skills_content) if skills_content else "No skills loaded."
+
+    # Update cache
+    _SKILLS_CACHE = result
+    _SKILLS_CACHE_TIME = datetime.now(timezone.utc)
+
+    return result
 
 
 def send_telegram_message(chat_id: str, text: str, reply_to_message_id: Optional[int] = None):
