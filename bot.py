@@ -148,19 +148,15 @@ def git_commit_push(message: str):
 def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
     """Fetch new messages directly from Telegram API
     Returns the next unprocessed message or None if no new messages
-    
+
     Args:
         use_cached: If True, try to use cached response from check_updates.sh instead of making API call
     """
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print("Telegram credentials not configured")
-        return None
-    
     try:
         # Load state to get last processed update_id
         state = read_json(STATE_PATH, {"last_update_id": 0})
         last_update_id = state.get("last_update_id", 0)
-        
+
         # Try to use cached response if available and requested
         data = None
         used_cache = False
@@ -169,12 +165,17 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
                 try:
                     data = json.loads(TELEGRAM_UPDATES_CACHE.read_text())
                     used_cache = True
+                    print("Successfully loaded cached Telegram response from check_updates.sh")
                 except Exception as e:
                     print(f"Failed to read cache, will fetch from API: {e}")
                     data = None
-        
-        # If no cached data, fetch from Telegram API
+
+        # If no cached data, check credentials and fetch from Telegram API
         if data is None:
+            if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+                print("Telegram credentials not configured")
+                return None
+
             url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
             params = {
                 "offset": last_update_id + 1,
@@ -182,7 +183,7 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
                 "timeout": 10,
                 "allowed_updates": ["message"]
             }
-            
+
             response = requests.get(url, params=params, timeout=15)
             response.raise_for_status()
             data = response.json()
@@ -195,19 +196,17 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
         if not updates:
             print("No new messages found")
             return None
-        
-        if used_cache:
-            print("Successfully used cached Telegram response from check_updates.sh")
-        
+
         # Process only the first update
         update = updates[0]
         update_id = update.get("update_id", 0)
         message = update.get("message", {})
         chat = message.get("chat", {})
         chat_id = str(chat.get("id", ""))
-        
-        # Only process messages from our configured chat ID
-        if chat_id != TELEGRAM_CHAT_ID:
+
+        # Only validate chat ID if we're not using cached data
+        # (cached data from check_updates.sh is already validated)
+        if not used_cache and TELEGRAM_CHAT_ID and chat_id != TELEGRAM_CHAT_ID:
             print(f"Ignoring message from chat_id: {chat_id}")
             # Update the offset to skip this message
             state["last_update_id"] = update_id
