@@ -10,6 +10,7 @@ GitButler is a personal AI helper that runs on GitHub Actions, communicates via 
 - 💬 **Natural Language Only**: No slash commands or buttons - just chat naturally
 - ⚡ **GitHub Actions Powered**: Runs every minute on free GitHub infrastructure
 - 📝 **Persistent Memory**: Everything stored in Git (soul.md for identity & reflections)
+- 🧾 **Per-Run Session Cache**: Message logs stay in memory for each action run and clear when it stops
 - 🔄 **Self-Improving**: Can create issues/PRs to modify its own code
 - 📅 **Scheduled Tasks**: Cron-based reminders and recurring prompts
 - 🎯 **Skills System**: Extensible with markdown-based skill definitions
@@ -197,7 +198,7 @@ The workflow runs every 5 minutes by default to check for new messages when the 
 **Continuous mode:**
 ```
 You: start
-Bot: 👋 I'm awake and active! Ready to help.
+Bot: GitButler session started (sent once per run)
 
 You: What's the weather?
 Bot: [Responds in ~10 seconds]

@@ -3,15 +3,15 @@
 ## Core Agent Loop
 
 ### Execution Flow
-1. **Poll**: Check Telegram for new messages (every 1 minute via GitHub Actions)
-2. **Queue**: Store incoming messages in `queues/incoming.json` (FIFO order)
+1. **Start Session**: Send a single start notification and keep a per-run in-memory message cache
+2. **Poll**: Check Telegram for new messages (every 1 minute via GitHub Actions)
 3. **Load Context**: Read soul.md → identity.md → user.md → agents.md → tools.md → skills
 4. **Process**: Send full context + user message to GPT-4o-mini
 5. **Parse Response**: Extract natural language response and optional JSON actions
-6. **Execute Actions**: Handle update_soul, create_issue, merge_pr, etc.
-7. **Queue Response**: Add response to `queues/outgoing.json`
-8. **Schedule Check**: Process any due scheduled tasks
-9. **Commit**: Push all changes to Git repository
+6. **Execute Actions**: Handle update_soul, create_issue, merge_pr, etc. and persist learnings to markdown files
+7. **Schedule Check**: Process any due scheduled tasks
+8. **Commit**: Push all changes to Git repository
+9. **Stop Session**: Send a single stop notification, clear the in-memory cache
 
 ### Tool Usage Guidelines
 
@@ -48,7 +48,7 @@
 ### Safety Rails
 - Never expose OPENAI_API_KEY, TELEGRAM_TOKEN, or other secrets
 - Always validate user intent before destructive actions
-- Maintain queue order (FIFO) - don't reorder messages
+- Keep chat transcripts in memory only for the current run (do not write message logs to disk)
 - Check for existing files before creating new ones
 - Always commit changes to Git for persistence
 
