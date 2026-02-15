@@ -163,11 +163,12 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
         
         # Try to use cached response if available and requested
         data = None
+        used_cache = False
         if use_cached:
             if TELEGRAM_UPDATES_CACHE.exists():
                 try:
                     data = json.loads(TELEGRAM_UPDATES_CACHE.read_text())
-                    print("Using cached Telegram response from check_updates.sh")
+                    used_cache = True
                 except Exception as e:
                     print(f"Failed to read cache, will fetch from API: {e}")
                     data = None
@@ -189,6 +190,9 @@ def fetch_new_messages(use_cached: bool = False) -> Optional[Dict]:
         if not data.get("ok"):
             log_error(f"Telegram API error: {data}")
             return None
+        
+        if used_cache:
+            print("Successfully used cached Telegram response from check_updates.sh")
         
         updates = data.get("result", [])
         if not updates:
