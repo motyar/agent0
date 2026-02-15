@@ -4,7 +4,9 @@ Test that cached updates work without Telegram credentials
 import os
 import json
 import sys
+import tempfile
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -122,6 +124,77 @@ def test_fetch_without_cache_and_without_credentials():
         if original_chat_id:
             os.environ["TELEGRAM_CHAT_ID"] = original_chat_id
             bot.TELEGRAM_CHAT_ID = original_chat_id
+
+
+def test_live_fetch_without_chat_id():
+    """Test that live polling works when chat ID is not configured"""
+
+    original_token = os.environ.get("TELEGRAM_TOKEN")
+    original_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+
+    try:
+        os.environ["TELEGRAM_TOKEN"] = "test_token"
+        if "TELEGRAM_CHAT_ID" in os.environ:
+            del os.environ["TELEGRAM_CHAT_ID"]
+
+        bot.TELEGRAM_TOKEN = "test_token"
+        bot.TELEGRAM_CHAT_ID = None
+
+        mock_response = {
+            "ok": True,
+            "result": [
+                {
+                    "update_id": 500,
+                    "message": {
+                        "message_id": 5,
+                        "text": "Live message",
+                        "chat": {"id": "999"}
+                    }
+                }
+            ]
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            state_path.write_text(json.dumps({
+                "last_update_id": 0,
+                "last_run_time": "2026-02-15T00:00:00+00:00",
+                "version": "1.0.0"
+            }))
+
+            with patch("bot.STATE_PATH", state_path):
+                with patch("requests.get") as mock_get:
+                    mock_get.return_value = Mock(
+                        json=lambda: mock_response,
+                        raise_for_status=lambda: None
+                    )
+
+                    message = bot.fetch_new_messages(use_cached=False)
+
+        assert message is not None, "Should fetch message even without chat ID"
+        assert message["update_id"] == 500
+        assert message["message_id"] == 5
+        assert message["text"] == "Live message"
+        assert message["chat_id"] == "999"
+
+        print("✓ Live fetch without chat ID test passed")
+
+    finally:
+        if original_token:
+            os.environ["TELEGRAM_TOKEN"] = original_token
+            bot.TELEGRAM_TOKEN = original_token
+        else:
+            if "TELEGRAM_TOKEN" in os.environ:
+                del os.environ["TELEGRAM_TOKEN"]
+            bot.TELEGRAM_TOKEN = None
+
+        if original_chat_id:
+            os.environ["TELEGRAM_CHAT_ID"] = original_chat_id
+            bot.TELEGRAM_CHAT_ID = original_chat_id
+        else:
+            if "TELEGRAM_CHAT_ID" in os.environ:
+                del os.environ["TELEGRAM_CHAT_ID"]
+            bot.TELEGRAM_CHAT_ID = None
 
 
 def run_tests():
