@@ -7,11 +7,12 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from bot import GitButler
+import bot
 
 def test_system_prompt_formatting():
     """Test that system prompt can be formatted without errors"""
-    bot = GitButler()
+    bot.ensure_directories()
+    bot.ensure_files()
     
     # Simulate the variables used in the system prompt
     soul_content = "Test soul content"
@@ -28,7 +29,6 @@ Identity & memory (NEVER forget or contradict this):
 Current capabilities:
 - Answer questions and have helpful conversations
 - Maintain persistent memory across all interactions
-- Manage todos, notes, and reminders via schedules
 - Self-improve: suggest code changes, create issues/PRs for improvements
 - Use skills from injected context when relevant
 

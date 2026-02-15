@@ -1,5 +1,5 @@
 """
-Test for outgoing queue message processing
+Test for direct message sending (no queue)
 """
 import json
 import sys
@@ -14,27 +14,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 os.environ['TELEGRAM_TOKEN'] = 'test_token'
 os.environ['TELEGRAM_CHAT_ID'] = '123'
 
-from bot import GitButler
+import bot
 
-def test_multiple_outgoing_messages():
-    """Test that multiple outgoing messages are sent in one run"""
-    bot = GitButler()
-    
-    # Create test messages in outgoing queue
-    test_messages = [
-        {"chat_id": "123", "text": "Message 1", "reply_to_message_id": 1},
-        {"chat_id": "123", "text": "Message 2", "reply_to_message_id": 2},
-        {"chat_id": "123", "text": "Message 3", "reply_to_message_id": 3}
-    ]
-    
-    outgoing_path = Path("queues/outgoing.json")
-    bot.write_json(outgoing_path, test_messages)
-    
-    # Verify messages were written
-    outgoing = bot.read_json(outgoing_path)
-    assert len(outgoing) == 3, f"Expected 3 messages, got {len(outgoing)}"
-    print(f"✓ Created {len(outgoing)} test messages in outgoing queue")
-    
+def test_send_telegram_message():
+    """Test sending a message directly to Telegram"""
     # Mock the actual Telegram sending to avoid real API calls
     with patch('requests.post') as mock_post:
         # Mock successful response
@@ -42,55 +25,60 @@ def test_multiple_outgoing_messages():
         mock_response.raise_for_status = Mock()
         mock_post.return_value = mock_response
         
-        # Mock git operations to avoid actual commits
-        with patch('subprocess.run') as mock_git:
-            mock_git.return_value = Mock(returncode=0)
-            
-            # Simulate the run loop's outgoing message processing
-            print("\nSimulating message sending loop...")
-            sent_count = 0
-            while bot.read_json(outgoing_path, []):
-                bot.send_outgoing_messages()
-                sent_count += 1
-                print(f"  Sent message {sent_count}")
-                
-                # Safety check to prevent infinite loop
-                if sent_count > 10:
-                    break
-            
-            # Verify all messages were sent
-            remaining = bot.read_json(outgoing_path)
-            assert len(remaining) == 0, f"Expected 0 remaining messages, got {len(remaining)}"
-            assert sent_count == 3, f"Expected to send 3 messages, sent {sent_count}"
+        # Send a test message
+        result = bot.send_telegram_message("123", "Test message", 1)
+        
+        # Verify it was called
+        assert result == True, "Message sending should succeed"
+        assert mock_post.called, "requests.post should be called"
+        
+        # Verify the API was called with correct parameters
+        call_args = mock_post.call_args
+        assert call_args is not None
+        json_data = call_args[1]['json']
+        assert json_data['chat_id'] == "123"
+        assert json_data['text'] == "Test message"
+        assert json_data['reply_to_message_id'] == 1
     
-    print(f"✓ Successfully sent all {sent_count} messages from queue")
-    print("✓ Multiple outgoing messages test passed")
+    print("✓ Direct message sending test passed")
     return True
 
-def test_empty_outgoing_queue():
-    """Test that bot handles empty outgoing queue gracefully"""
-    bot = GitButler()
+def test_send_telegram_message_without_reply():
+    """Test sending a message without reply_to"""
+    # Mock the actual Telegram sending to avoid real API calls
+    with patch('requests.post') as mock_post:
+        # Mock successful response
+        mock_response = Mock()
+        mock_response.raise_for_status = Mock()
+        mock_post.return_value = mock_response
+        
+        # Send a test message without reply_to
+        result = bot.send_telegram_message("123", "Test message")
+        
+        # Verify it was called
+        assert result == True, "Message sending should succeed"
+        assert mock_post.called, "requests.post should be called"
+        
+        # Verify the API was called with correct parameters
+        call_args = mock_post.call_args
+        assert call_args is not None
+        json_data = call_args[1]['json']
+        assert json_data['chat_id'] == "123"
+        assert json_data['text'] == "Test message"
+        assert 'reply_to_message_id' not in json_data or json_data['reply_to_message_id'] is None
     
-    # Clear outgoing queue
-    outgoing_path = Path("queues/outgoing.json")
-    bot.write_json(outgoing_path, [])
-    
-    # This should not raise any errors
-    outgoing = bot.read_json(outgoing_path)
-    assert len(outgoing) == 0
-    
-    print("✓ Empty outgoing queue test passed")
+    print("✓ Direct message sending without reply test passed")
     return True
 
 def run_tests():
-    """Run all outgoing queue tests"""
-    print("Running outgoing queue tests...\n")
+    """Run all message sending tests"""
+    print("Running direct message sending tests...\n")
     
     try:
-        test_empty_outgoing_queue()
-        test_multiple_outgoing_messages()
+        test_send_telegram_message()
+        test_send_telegram_message_without_reply()
         
-        print("\n✅ All outgoing queue tests passed!")
+        print("\n✅ All direct message sending tests passed!")
         return 0
     except AssertionError as e:
         print(f"\n❌ Test failed: {e}")
